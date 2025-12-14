@@ -1,13 +1,12 @@
-/* app.js — AI BAYAN GRAMMAR 4gr
-   - Login: Student PIN 2844, Teacher PIN 3244
-   - Logins: 4GL1..4GL15
-   - 15 Units (tiles like Beginner menu)
-   - Each unit has its own color + 5 shades for Exercise 1..5
-   - Check (✅) / X (❌) feedback, stars saved (localStorage)
-   - AI Bayan: SMS button opens chat modal, 1 question/day
-   - Print with watermark
+/* app.js — AI BAYAN GRAMMAR 4gr (fixed)
+   - Student PIN 2844, Teacher PIN 3244
+   - Logins 4GL1..4GL15
+   - Menu tiles like Beginner menu
+   - Unit color changes header + tabs (5 shades)
+   - Check: ✅/❌, stars saved, 1 attempt
+   - AI Bayan: SMS opens modal, 1 question/day (students)
+   - Print watermark
 */
-
 (function () {
   const APP_TITLE = "AI BAYAN GRAMMAR 4gr";
 
@@ -22,11 +21,12 @@
       .replaceAll('"', "&quot;");
 
   const LS = {
-    session: "AIBAYAN_GF4_SESSION",
-    stars: "AIBAYAN_GF4_STARS",
-    attempts: "AIBAYAN_GF4_ATTEMPTS",
-    chat: "AIBAYAN_GF4_CHAT",
-    teacher: "AIBAYAN_GF4_TEACHER",
+    session: "AIBAYAN_G4_SESSION",
+    stars: "AIBAYAN_G4_STARS",
+    attempts: "AIBAYAN_G4_ATTEMPTS",
+    chat: "AIBAYAN_G4_CHAT",
+    teacher: "AIBAYAN_G4_TEACHER",
+    chatlog_prefix: "AIBAYAN_G4_CHATLOG_",
   };
 
   const todayKey = () => {
@@ -64,178 +64,13 @@
     localStorage.removeItem(LS.session);
   }
 
-  // ---------- DATA (fallback if data.js missing) ----------
-  // Supports two formats:
-  // A) units: [{id:'u1', title, topic, ruleEn, ruleRu, exercises:[{id:'ex1', items:[{prompt,answer}]}]}]
-  // B) units: [{id: 1, title, color, rules:{title,en,ru}, tasks:{ex1:{items:[{q,a}]}...}}]
-  const FALLBACK = {
-    units: buildDefaultUnits(),
-    tests: buildDefaultTests(),
-  };
-
+  // ---------- data ----------
   function getData() {
     const d = window.APP_DATA || {};
-    const rawUnits = Array.isArray(d.units) ? d.units : [];
-    const rawTests = Array.isArray(d.tests) ? d.tests : [];
-
-    const units =
-      rawUnits.length ? normalizeUnits(rawUnits) : FALLBACK.units;
-
-    const tests =
-      rawTests.length ? normalizeTests(rawTests) : FALLBACK.tests;
-
-    return { units, tests };
-  }
-
-  function normalizeUnits(rawUnits) {
-    // If already in format A (ruleEn/ruleRu + exercises array)
-    const looksLikeA =
-      rawUnits.some(
-        (u) =>
-          typeof u?.ruleEn === "string" ||
-          Array.isArray(u?.exercises)
-      );
-
-    if (looksLikeA) {
-      return rawUnits.map((u, idx) => {
-        const id = String(u.id || `u${idx + 1}`);
-        return {
-          id: id.startsWith("u") ? id : `u${id}`,
-          title: u.title || `Unit ${idx + 1}`,
-          topic: u.topic || u.rules?.title || "",
-          ruleEn: u.ruleEn || u.rules?.en || "",
-          ruleRu: u.ruleRu || u.rules?.ru || "",
-          exercises: Array.isArray(u.exercises) && u.exercises.length
-            ? u.exercises.map((e, eidx) => ({
-                id: e.id || `ex${eidx + 1}`,
-                title: e.title || `Exercise ${eidx + 1}`,
-                items: (e.items || []).map((it, ii) => ({
-                  id: it.id || `i${idx + 1}_${eidx + 1}_${ii + 1}`,
-                  prompt: it.prompt ?? it.q ?? "",
-                  answer: it.answer ?? it.a ?? "ok",
-                  kind: it.kind || "text",
-                })),
-              }))
-            : Array.from({ length: 5 }, (_, eidx) => ({
-                id: `ex${eidx + 1}`,
-                title: `Exercise ${eidx + 1}`,
-                items: buildDefaultItems(idx + 1, eidx + 1, 10),
-              })),
-        };
-      });
-    }
-
-    // Format B (rules/tasks)
-    return rawUnits.map((u, idx) => {
-      const num = Number(u.id || idx + 1);
-      const id = `u${num}`;
-      const ruleTitle = u.rules?.title || u.topic || "";
-      const ruleEn = u.rules?.en || u.ruleEn || "";
-      const ruleRu = u.rules?.ru || u.ruleRu || "";
-
-      // tasks -> exercises ex1..ex5
-      const exs = [];
-      for (let k = 1; k <= 5; k++) {
-        const key = `ex${k}`;
-        const items = u.tasks?.[key]?.items || [];
-        exs.push({
-          id: key,
-          title: `Exercise ${k}`,
-          items: (items.length ? items : buildDefaultItems(num, k, 10)).slice(0, 10).map((it, ii) => ({
-            id: it.id || `i${num}_${k}_${ii + 1}`,
-            prompt: it.prompt ?? it.q ?? "",
-            answer: it.answer ?? it.a ?? "ok",
-            kind: it.kind || "text",
-          })),
-        });
-      }
-
-      return {
-        id,
-        title: u.title || `Unit ${num}`,
-        topic: ruleTitle,
-        ruleEn,
-        ruleRu,
-        exercises: exs,
-      };
-    });
-  }
-
-  function normalizeTests(rawTests) {
-    // Accept {id,title,items:[{prompt,answer}]}
-    return rawTests.map((t, idx) => ({
-      id: String(t.id || `t${idx + 1}`).startsWith("t") ? String(t.id || `t${idx + 1}`) : `t${t.id}`,
-      title: t.title || `Test — Unit ${idx + 1}`,
-      items: (t.items || []).slice(0, 10).map((it, ii) => ({
-        id: it.id || `t${idx + 1}_q${ii + 1}`,
-        prompt: it.prompt ?? it.q ?? `Question ${ii + 1}`,
-        answer: it.answer ?? it.a ?? "ok",
-        kind: it.kind || "text",
-      })),
-    }));
-  }
-
-  // ---------- fallback content ----------
-  function buildDefaultUnits() {
-    const topics = [
-      { title: "Unit 1", topic: "Present Simple vs Present Continuous", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 2", topic: "Past Simple", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 3", topic: "Irregular Verbs", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 4", topic: "Possessive Pronouns", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 5", topic: "Have to / Imperative", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 6", topic: "Comparatives / Superlatives", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 7", topic: "Will / Won’t", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 8", topic: "Much / Many / Some / Any", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 9", topic: "Infinitive of purpose", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 10", topic: "Present Perfect (1)", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 11", topic: "Present Perfect (2)", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 12", topic: "Should / Could", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 13", topic: "Object pronouns / who / which", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 14", topic: "Past Continuous", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-      { title: "Unit 15", topic: "Past Simple vs Past Continuous", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
-    ];
-
-    return topics.map((t, idx) => ({
-      id: `u${idx + 1}`,
-      title: t.title,
-      topic: t.topic,
-      ruleEn: t.ruleEn,
-      ruleRu: t.ruleRu,
-      exercises: Array.from({ length: 5 }, (_, e) => ({
-        id: `ex${e + 1}`,
-        title: `Exercise ${e + 1}`,
-        items: buildDefaultItems(idx + 1, e + 1, 10),
-      })),
-    }));
-  }
-
-  function buildDefaultItems(unitNum, exNum, n) {
-    const base = [
-      "Write the correct form.",
-      "Choose the correct option.",
-      "Make a question.",
-      "Make a negative sentence.",
-      "Translate (RU→EN).",
-    ];
-    return Array.from({ length: n }, (_, i) => ({
-      id: `i${unitNum}_${exNum}_${i + 1}`,
-      prompt: base[i % base.length],
-      answer: "ok",
-      kind: "text",
-    }));
-  }
-
-  function buildDefaultTests() {
-    return Array.from({ length: 15 }, (_, i) => ({
-      id: `t${i + 1}`,
-      title: `Test — Unit ${i + 1}`,
-      items: Array.from({ length: 10 }, (_, k) => ({
-        id: `t${i + 1}_q${k + 1}`,
-        prompt: `Unit ${i + 1}: Question ${k + 1}`,
-        answer: "ok",
-        kind: "text",
-      })),
-    }));
+    return {
+      units: Array.isArray(d.units) ? d.units : [],
+      tests: Array.isArray(d.tests) ? d.tests : [],
+    };
   }
 
   // ---------- state ----------
@@ -249,31 +84,31 @@
 
   // ---------- stars / attempts ----------
   function getStars() {
-    return loadJSON(LS.stars, {});
+    return loadJSON(LS.stars, {}); // {login:{points:number}}
   }
   function addStars(login, delta) {
-    const stars = getStars();
-    if (!stars[login]) stars[login] = { points: 0 };
-    stars[login].points += delta;
-    saveJSON(LS.stars, stars);
+    const s = getStars();
+    if (!s[login]) s[login] = { points: 0 };
+    s[login].points += delta;
+    saveJSON(LS.stars, s);
   }
   function getTotalStars(login) {
-    const stars = getStars();
-    return stars[login]?.points || 0;
+    const s = getStars();
+    return s?.[login]?.points || 0;
   }
 
   function getAttempts() {
-    return loadJSON(LS.attempts, {});
+    return loadJSON(LS.attempts, {}); // {login:{key:true}}
   }
   function markAttempt(login, key) {
-    const all = getAttempts();
-    if (!all[login]) all[login] = {};
-    all[login][key] = true;
-    saveJSON(LS.attempts, all);
+    const a = getAttempts();
+    if (!a[login]) a[login] = {};
+    a[login][key] = true;
+    saveJSON(LS.attempts, a);
   }
   function hasAttempt(login, key) {
-    const all = getAttempts();
-    return !!all?.[login]?.[key];
+    const a = getAttempts();
+    return !!a?.[login]?.[key];
   }
 
   // ---------- chat limit ----------
@@ -290,38 +125,67 @@
     saveJSON(LS.chat, chat);
   }
 
-  // ---------- PRINT with watermark ----------
-  function printWithWatermark() {
-    const wm = document.createElement("div");
-    wm.id = "__wm";
-    wm.textContent = APP_TITLE;
-    wm.style.position = "fixed";
-    wm.style.left = "50%";
-    wm.style.top = "50%";
-    wm.style.transform = "translate(-50%,-50%) rotate(-25deg)";
-    wm.style.fontSize = "64px";
-    wm.style.fontWeight = "900";
-    wm.style.opacity = "0.08";
-    wm.style.pointerEvents = "none";
-    wm.style.zIndex = "999999";
-    document.body.appendChild(wm);
-
-    window.print();
-
-    setTimeout(() => {
-      wm.remove();
-    }, 300);
+  // ---------- themes ----------
+  // 15 base colors (Unit 1 purple), 5 shades for ex1..ex5
+  function getUnitTheme(i) {
+    const palette = [
+      "#7C4DFF", // u1 purple
+      "#00BFA6",
+      "#1E88E5",
+      "#43A047",
+      "#FB8C00",
+      "#E53935",
+      "#8E24AA",
+      "#00897B",
+      "#3949AB",
+      "#6D4C41",
+      "#F4511E",
+      "#039BE5",
+      "#5E35B1",
+      "#2E7D32",
+      "#C0CA33",
+    ];
+    const base = palette[i % palette.length];
+    const shades = makeShades(base, 5);
+    return { base, shades };
+  }
+  function makeShades(hex, n) {
+    const rgb = hexToRgb(hex);
+    const res = [];
+    for (let i = 0; i < n; i++) {
+      const t = 0.12 + i * 0.12;
+      res.push(rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, t)));
+    }
+    return res;
+  }
+  function hexToRgb(hex) {
+    const h = hex.replace("#", "");
+    const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+    const num = parseInt(full, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+  function mix(a, b, t) {
+    return {
+      r: Math.round(a.r * (1 - t) + b.r * t),
+      g: Math.round(a.g * (1 - t) + b.g * t),
+      b: Math.round(a.b * (1 - t) + b.b * t),
+    };
+  }
+  function rgbToHex(c) {
+    const h = (v) => v.toString(16).padStart(2, "0");
+    return `#${h(c.r)}${h(c.g)}${h(c.b)}`;
   }
 
-  // ---------- rendering ----------
+  // ---------- mount ----------
   function mount() {
     const session = getSession();
     if (!session) return renderLogin();
     renderApp(session);
   }
 
+  // ---------- login ----------
   function renderLogin(errMsg = "") {
-    const html = `
+    $("#app").innerHTML = `
       <div class="loginPage">
         <div class="loginCard">
           <div class="loginBrand">
@@ -336,55 +200,55 @@
 
           <div class="loginForm">
             <label>Login</label>
-            <input id="loginInput" class="input" autocomplete="username" />
+            <input id="loginInput" class="input" placeholder="4GL1" autocomplete="username" />
             <label>PIN</label>
-            <input id="pinInput" class="input" type="password" inputmode="numeric" autocomplete="current-password" />
+            <input id="pinInput" class="input" placeholder="****" type="password" autocomplete="current-password" />
             <button id="loginBtn" class="btnPrimary">Enter</button>
           </div>
         </div>
       </div>
     `;
-    $("#app").innerHTML = html;
 
     $("#loginBtn").onclick = () => {
-      const loginRaw = ($("#loginInput").value || "").trim();
+      const login = ($("#loginInput").value || "").trim();
       const pin = ($("#pinInput").value || "").trim();
 
-      if (!pin) return renderLogin("Enter PIN.");
+      if (!login || !pin) return renderLogin("Fill in Login and PIN.");
 
-      // teacher by PIN only
       if (pin === AUTH.teacherPin) {
-        setSession({ role: "teacher", login: "TEACHER" });
+        setSession({ role: "teacher", login: login || "TEACHER" });
+        state.view = "menu";
         return mount();
       }
 
-      // student
-      const login = loginRaw;
       const okLogin = AUTH.logins.includes(login);
       const okPin = pin === AUTH.studentPin;
       if (!okLogin || !okPin) return renderLogin("Wrong login or PIN.");
+
       setSession({ role: "student", login });
+      state.view = "menu";
       mount();
     };
   }
 
+  // ---------- app shell ----------
   function renderApp(session) {
     const data = getData();
+    const units = data.units || [];
+    const tests = data.tests || [];
+    const unit = units.find((u) => u.id === state.unitId) || units[0];
+    const unitIndex = Math.max(0, units.findIndex((u) => u.id === unit?.id));
+    const theme = getUnitTheme(unitIndex);
 
-    const unit = data.units.find((u) => u.id === state.unitId) || data.units[0];
-    const unitIndex = Math.max(0, data.units.findIndex((u) => u.id === unit.id));
-    const ex = (unit.exercises || []).find((e) => e.id === state.exId) || (unit.exercises || [])[0];
-    const test = data.tests.find((t) => t.id === state.testId) || data.tests[0];
+    const ex = (unit?.exercises || []).find((e) => e.id === state.exId) || (unit?.exercises || [])[0];
+    const test = tests.find((t) => t.id === state.testId) || tests[0];
+
+    // set accent: menu uses main blue-grey, unit uses unit color
+    const menuAccent = "#0f7c8a";
+    const accent = state.view === "unit" ? theme.base : menuAccent;
+    document.documentElement.style.setProperty("--accent", accent);
 
     const totalStars = session.role === "student" ? getTotalStars(session.login) : 0;
-
-    // theme colors per unit
-    const theme = getUnitTheme(unitIndex);
-    document.documentElement.style.setProperty("--unit", theme.base);
-    document.documentElement.style.setProperty("--unit2", theme.shades[1]);
-    document.documentElement.style.setProperty("--unit3", theme.shades[2]);
-    document.documentElement.style.setProperty("--unit4", theme.shades[3]);
-    document.documentElement.style.setProperty("--unit5", theme.shades[4]);
 
     $("#app").innerHTML = `
       <div class="shell">
@@ -396,7 +260,6 @@
               <div class="brandSub">${esc(session.role === "teacher" ? "Teacher" : session.login)}</div>
             </div>
           </div>
-
           <div class="topActions">
             <button id="printBtn" class="btnGhost">Print</button>
             <button id="logoutBtn" class="btnDanger">Logout</button>
@@ -436,14 +299,16 @@
       </div>
     `;
 
-    // nav
+    // side nav
     $$(".navBtn[data-view]").forEach((b) => {
       b.onclick = () => {
         state.view = b.dataset.view;
+        if (state.view !== "unit") document.documentElement.style.setProperty("--accent", menuAccent);
         renderApp(session);
       };
     });
 
+    // logout
     $("#logoutBtn").onclick = () => {
       clearSession();
       mount();
@@ -453,16 +318,15 @@
       mount();
     };
 
-    $("#printBtn").onclick = () => printWithWatermark();
+    // print
+    $("#printBtn").onclick = () => window.print();
 
-    // sms
+    // sms open
     $("#smsBtn").onclick = () => {
       state.chatOpen = true;
       renderApp(session);
       setChatUI(session);
     };
-
-    // chat close
     const close = $("#chatClose");
     if (close) {
       close.onclick = () => {
@@ -481,7 +345,23 @@
       };
     });
 
-    // exercise tabs
+    // back buttons
+    const backUnits = $("#backUnits");
+    if (backUnits) {
+      backUnits.onclick = () => {
+        state.view = "menu";
+        renderApp(session);
+      };
+    }
+    const backMenu = $("#backMenu");
+    if (backMenu) {
+      backMenu.onclick = () => {
+        state.view = "menu";
+        renderApp(session);
+      };
+    }
+
+    // exercise tabs (5 shades)
     $$(".exTab").forEach((b) => {
       b.onclick = () => {
         state.exId = b.dataset.exid;
@@ -498,25 +378,26 @@
       };
     });
 
-    // submit handlers
+    // submit
     const submitBtn = $("#submitBtn");
     if (submitBtn) {
       submitBtn.onclick = () => submitExercise(session, unit, ex);
-      setAttemptUI(session, unit, ex);
+      setAttemptUI(session, `unit_${unit.id}_${ex.id}`, "#attemptInfo", "#submitBtn");
     }
     const submitTestBtn = $("#submitTestBtn");
     if (submitTestBtn) {
       submitTestBtn.onclick = () => submitTest(session, test);
-      setAttemptUI_Test(session, test);
+      setAttemptUI(session, `test_${test.id}`, "#attemptInfoTest", "#submitTestBtn");
     }
 
-    // teacher view render table
-    if (state.view === "teacher") {
-      renderTeacher(session);
-    }
+    if (state.view === "teacher") renderTeacher();
   }
 
+  // ---------- main render ----------
   function renderMain(session, data, unit, ex, test, theme) {
+    const units = data.units || [];
+    const tests = data.tests || [];
+
     if (state.view === "menu") {
       return `
         <div class="pageHeader">
@@ -525,7 +406,7 @@
         </div>
 
         <div class="tiles">
-          ${data.units
+          ${units
             .map((u, i) => {
               const th = getUnitTheme(i);
               return `
@@ -534,7 +415,7 @@
                     <img class="tileLogo" src="logo.png" alt="logo"/>
                     <div class="tileText">
                       <div class="tileTitle">${esc(u.title)}</div>
-                      <div class="tileSub">${esc(u.topic)}</div>
+                      <div class="tileSub">${esc(u.topic || "")}</div>
                     </div>
                   </div>
                 </div>
@@ -553,7 +434,7 @@
         </div>
 
         <div class="tiles">
-          ${data.tests
+          ${tests
             .map((t) => {
               return `
                 <div class="testTile" data-tid="${esc(t.id)}">
@@ -567,16 +448,17 @@
 
         <div class="card">
           <div class="cardHeader">
-            <div class="cardTitle">${esc(test.title)}</div>
+            <div class="cardTitle">${esc(test?.title || "Test")}</div>
             <div class="badge">10 items</div>
           </div>
 
-          ${renderItemsForm(test.items, `test_${test.id}`)}
+          ${renderItemsForm(test?.items || [], `test_${test?.id || "t"}`)}
 
           ${
             session.role === "student"
               ? `<div class="cardActions">
                   <button id="submitTestBtn" class="btnPrimary">Check</button>
+                  <button id="backMenu" class="btnGhost">Back to Units</button>
                   <div id="attemptInfoTest" class="muted"></div>
                 </div>`
               : `<div class="muted">Teacher can view, but checking is for students.</div>`
@@ -586,21 +468,18 @@
     }
 
     if (state.view === "teacher") {
-      // ✅ IMPORTANT: do NOT use unit.* here (teacher page is global)
       return `
         <div class="pageHeader">
           <div class="pageTitle">Teacher Journal</div>
-          <div class="pageSub">Saved in this browser (localStorage)</div>
+          <div class="pageSub">Saved on this device (localStorage)</div>
         </div>
-
-        <div class="card" id="teacherCard">
-          <div class="muted">Loading…</div>
-        </div>
+        <div class="card" id="teacherCard"><div class="muted">Loading…</div></div>
       `;
     }
 
-    // unit view
+    // UNIT VIEW
     const exTabs = (unit.exercises || [])
+      .slice(0, 5)
       .map((e, idx) => {
         const shade = theme.shades[idx] || theme.base;
         const active = e.id === ex.id ? "active" : "";
@@ -611,21 +490,34 @@
       .join("");
 
     return `
-      <div class="ruleCard">
+      <div class="unitHeader" style="background:${theme.base}">
+        <div class="unitHeaderLeft">
+          <img class="unitLogo" src="logo.png" alt="logo"/>
+          <div>
+            <div class="unitTitle">${esc(unit.title)}</div>
+            <div class="unitSub">${esc(unit.topic || "")}</div>
+          </div>
+        </div>
+        <div class="unitHeaderRight">
+          <button id="backUnits" class="btnGhostLight">Back to Units</button>
+        </div>
+      </div>
+
+      <div class="ruleCard" style="border-left-color:${theme.base}">
         <div class="ruleTop">
           <img class="ruleLogo" src="logo.png" alt="logo"/>
           <div>
-            <div class="ruleTitle">${esc(unit.title)}</div>
-            <div class="ruleTopic">${esc(unit.topic)}</div>
+            <div class="ruleTitle">Grammar rule</div>
+            <div class="ruleTopic">${esc(unit.topic || "")}</div>
           </div>
         </div>
         <div class="ruleBlock">
           <div class="ruleLabel">Formula (EN)</div>
-          <div class="ruleText">${esc(unit.ruleEn)}</div>
+          <div class="ruleText">${esc(unit.ruleEn || "")}</div>
         </div>
         <div class="ruleBlock">
           <div class="ruleLabel">Объяснение (RU)</div>
-          <div class="ruleText">${esc(unit.ruleRu)}</div>
+          <div class="ruleText">${esc(unit.ruleRu || "")}</div>
         </div>
       </div>
 
@@ -634,15 +526,16 @@
       <div class="card">
         <div class="cardHeader">
           <div class="cardTitle">${esc(ex.title)}</div>
-          <div class="badge">10 items</div>
+          <div class="badge" style="background:${theme.shades[4]}">10 items</div>
         </div>
 
-        ${renderItemsForm(ex.items, `unit_${unit.id}_${ex.id}`)}
+        ${renderItemsForm(ex.items || [], `unit_${unit.id}_${ex.id}`)}
 
         ${
           session.role === "student"
             ? `<div class="cardActions">
-                <button id="submitBtn" class="btnPrimary">Check</button>
+                <button id="submitBtn" class="btnPrimary" style="background:${theme.base}">Check</button>
+                <button id="backMenu" class="btnGhost">Back to Units</button>
                 <div id="attemptInfo" class="muted"></div>
               </div>`
             : `<div class="muted">Teacher can view, but checking is for students.</div>`
@@ -651,13 +544,14 @@
     `;
   }
 
+  // IMPORTANT FIX: ids must match submit() search
   function renderItemsForm(items, keyPrefix) {
     const list = (items || []).slice(0, 10);
     return `
       <div class="items">
         ${list
           .map((it, idx) => {
-            const id = `${keyPrefix}_${it.id}`;
+            const rowId = `${keyPrefix}__${it.id}`; // <-- stable
             return `
               <div class="itemRow">
                 <div class="q">
@@ -665,8 +559,10 @@
                   <div class="qText">${esc(it.prompt)}</div>
                 </div>
                 <div class="a">
-                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" />
-                  <div class="mark" id="${esc(id)}_mark"></div>
+                  <input class="input ans" data-aid="${esc(it.id)}" data-rowid="${esc(
+                    rowId
+                  )}" placeholder="Answer..." />
+                  <div class="mark" id="${esc(rowId)}__mark"></div>
                 </div>
               </div>
             `;
@@ -676,9 +572,188 @@
     `;
   }
 
+  // ---------- checking (✅/❌ + stars) ----------
+  function isAnswerCorrect(user, expected) {
+    if (expected === "ok") return String(user || "").trim().length > 0;
+
+    const norm = (x) =>
+      String(x || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+    return norm(user) === norm(expected);
+  }
+
+  function submitExercise(session, unit, ex) {
+    if (session.role !== "student") return;
+    const key = `unit_${unit.id}_${ex.id}`;
+    if (hasAttempt(session.login, key)) return;
+
+    const items = (ex.items || []).slice(0, 10);
+    let correct = 0;
+
+    items.forEach((it) => {
+      const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
+      const user = (inp?.value || "").trim();
+      const ok = isAnswerCorrect(user, it.answer);
+
+      const rowId = inp?.dataset?.rowid || `${key}__${it.id}`;
+      const mark = $(`#${CSS.escape(rowId)}__mark`);
+      if (mark) {
+        mark.className = "mark " + (ok ? "ok" : "bad");
+        mark.textContent = ok ? "✓" : "✗";
+      }
+      if (ok) correct++;
+      if (inp) inp.disabled = true;
+    });
+
+    addStars(session.login, correct);
+    markAttempt(session.login, key);
+
+    saveTeacherResult({
+      type: "exercise",
+      login: session.login,
+      when: new Date().toISOString(),
+      unit: unit.title,
+      ex: ex.title,
+      score: `${correct}/10`,
+      stars: correct,
+    });
+
+    renderApp(session);
+  }
+
+  function submitTest(session, test) {
+    if (session.role !== "student") return;
+    const key = `test_${test.id}`;
+    if (hasAttempt(session.login, key)) return;
+
+    const items = (test.items || []).slice(0, 10);
+    let correct = 0;
+
+    items.forEach((it) => {
+      const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
+      const user = (inp?.value || "").trim();
+      const ok = isAnswerCorrect(user, it.answer);
+
+      const rowId = inp?.dataset?.rowid || `${key}__${it.id}`;
+      const mark = $(`#${CSS.escape(rowId)}__mark`);
+      if (mark) {
+        mark.className = "mark " + (ok ? "ok" : "bad");
+        mark.textContent = ok ? "✓" : "✗";
+      }
+      if (ok) correct++;
+      if (inp) inp.disabled = true;
+    });
+
+    addStars(session.login, correct);
+    markAttempt(session.login, key);
+
+    saveTeacherResult({
+      type: "test",
+      login: session.login,
+      when: new Date().toISOString(),
+      test: test.title,
+      score: `${correct}/10`,
+      stars: correct,
+    });
+
+    renderApp(session);
+  }
+
+  function setAttemptUI(session, key, infoSel, btnSel) {
+    if (session.role !== "student") return;
+    const attempted = hasAttempt(session.login, key);
+    const info = $(infoSel);
+    const btn = $(btnSel);
+
+    if (attempted) {
+      if (info) info.textContent = "Attempt used (1 try).";
+      if (btn) btn.disabled = true;
+      $$(".ans").forEach((i) => (i.disabled = true));
+    } else {
+      if (info) info.textContent = "1 attempt.";
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ---------- teacher journal ----------
+  function saveTeacherResult(row) {
+    const all = loadJSON(LS.teacher, []);
+    all.push(row);
+    saveJSON(LS.teacher, all);
+  }
+
+  function renderTeacher() {
+    const card = $("#teacherCard");
+    if (!card) return;
+
+    const all = loadJSON(LS.teacher, []);
+    const stars = getStars();
+
+    // summary list 4GL1..4GL15
+    const summaryRows = AUTH.logins
+      .map((login) => {
+        const total = stars?.[login]?.points || 0;
+        const last = [...all].reverse().find((r) => r.login === login);
+        const lastText = last
+          ? `${new Date(last.when).toLocaleDateString()} • ${last.type} • ${last.score}`
+          : "—";
+        return `<tr>
+          <td><b>${esc(login)}</b></td>
+          <td>⭐ ${esc(total)}</td>
+          <td>${esc(lastText)}</td>
+        </tr>`;
+      })
+      .join("");
+
+    const lastRows = all
+      .slice()
+      .reverse()
+      .slice(0, 80)
+      .map((r) => {
+        const when = new Date(r.when);
+        const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
+        const title = r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
+        return `<tr>
+          <td>${esc(w)}</td>
+          <td>${esc(r.login)}</td>
+          <td>${esc(r.type)}</td>
+          <td>${esc(title)}</td>
+          <td><b>${esc(r.score)}</b></td>
+          <td>⭐ ${esc(r.stars)}</td>
+        </tr>`;
+      })
+      .join("");
+
+    card.innerHTML = `
+      <div class="tableTitle">Students (4GL1–4GL15)</div>
+      <div class="tableWrap">
+        <table class="t">
+          <thead><tr><th>Login</th><th>Total stars</th><th>Last activity</th></tr></thead>
+          <tbody>${summaryRows}</tbody>
+        </table>
+      </div>
+
+      <div class="tableTitle" style="margin-top:14px;">Last results</div>
+      <div class="tableWrap">
+        <table class="t">
+          <thead>
+            <tr><th>Time</th><th>Login</th><th>Type</th><th>Unit/Test</th><th>Score</th><th>Stars</th></tr>
+          </thead>
+          <tbody>${lastRows || ""}</tbody>
+        </table>
+      </div>
+
+      <div class="mutedSmall">Saved in this browser (localStorage).</div>
+    `;
+  }
+
+  // ---------- chat modal ----------
   function renderChatModal(session) {
     if (!state.chatOpen) return "";
-    const locked = session.role !== "student" ? false : !canAskToday(session.login);
+    const locked = session.role === "student" ? !canAskToday(session.login) : false;
+
     return `
       <div class="chatOverlay">
         <div class="chatModal">
@@ -686,6 +761,7 @@
             <div class="chatTitle">AI Bayan</div>
             <button class="chatClose" id="chatClose">✕</button>
           </div>
+
           <div class="chatBody">
             <div class="mutedSmall">1 question/day · ${esc(todayKey())}</div>
 
@@ -700,7 +776,7 @@
             <div class="chatLog" id="chatLog"></div>
 
             <div class="chatInputRow">
-              <input id="chatInput" class="input" ${locked ? "disabled" : ""}/>
+              <input id="chatInput" class="input" placeholder="Type your question..." ${locked ? "disabled" : ""}/>
               <button id="chatSend" class="btnPrimary" ${locked ? "disabled" : ""}>Send</button>
             </div>
 
@@ -719,9 +795,10 @@
 
   function setChatUI(session) {
     const login = session.login || "user";
-    const logKey = `log_${login}`;
+    const logKey = LS.chatlog_prefix + login;
     const history = loadJSON(logKey, []);
     const logEl = $("#chatLog");
+
     if (logEl) {
       logEl.innerHTML = history
         .map(
@@ -762,7 +839,7 @@
       return;
     }
 
-    const logKey = `log_${login}`;
+    const logKey = LS.chatlog_prefix + login;
     const history = loadJSON(logKey, []);
     history.push({ role: "user", text: msg });
 
@@ -770,22 +847,17 @@
     history.push({ role: "ai", text: reply });
 
     saveJSON(logKey, history);
-
     if (session.role === "student") markAskedToday(login);
 
     setChatUI(session);
-
     const inp = $("#chatInput");
     if (inp) inp.value = "";
 
-    // lock only if student after first question
     if (session.role === "student") {
       const info = $("#chatLimitInfo");
       if (info) info.textContent = "Limit reached for today. Come back tomorrow.";
-      const b = $("#chatSend");
-      const i = $("#chatInput");
-      if (b) b.disabled = true;
-      if (i) i.disabled = true;
+      if ($("#chatSend")) $("#chatSend").disabled = true;
+      if ($("#chatInput")) $("#chatInput").disabled = true;
     }
   }
 
@@ -799,239 +871,8 @@
       return "Past Simple (RU): завершённое действие в прошлом. Формула: V2 или V-ed. Отриц: didn’t + V1. Вопрос: Did + S + V1?";
     if (s.includes("examples"))
       return "5 examples:\n1) I go to school every day.\n2) She plays tennis on Sundays.\n3) They aren’t watching TV now.\n4) We went to the park yesterday.\n5) Have you ever been to London?";
-    if (s.includes("check"))
-      return "Send your sentence and I’ll check it (grammar + correction).";
-    return "Write your grammar question (Unit 1–15). I will explain with formula + examples.";
-  }
-
-  // ---------- checking (✅/❌ + stars) ----------
-  function submitExercise(session, unit, ex) {
-    if (session.role !== "student") return;
-    const key = `unit_${unit.id}_${ex.id}`;
-    if (hasAttempt(session.login, key)) return;
-
-    const items = (ex.items || []).slice(0, 10);
-    let correct = 0;
-
-    items.forEach((it) => {
-      const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
-      const user = (inp?.value || "").trim();
-      const ok = isAnswerCorrect(user, it.answer);
-
-      const mark = $(`#${CSS.escape(key + "_" + it.id)}_mark`);
-      if (mark) {
-        mark.className = "mark " + (ok ? "ok" : "bad");
-        mark.textContent = ok ? "✓" : "✗";
-      }
-      if (ok) correct++;
-      if (inp) inp.disabled = true;
-    });
-
-    addStars(session.login, correct);
-    markAttempt(session.login, key);
-
-    saveTeacherResult({
-      type: "exercise",
-      login: session.login,
-      when: new Date().toISOString(),
-      unit: unit.title,
-      ex: ex.title,
-      score: `${correct}/10`,
-      stars: correct,
-    });
-
-    renderApp(session);
-  }
-
-  function submitTest(session, test) {
-    if (session.role !== "student") return;
-    const key = `test_${test.id}`;
-    if (hasAttempt(session.login, key)) return;
-
-    const items = (test.items || []).slice(0, 10);
-    let correct = 0;
-
-    items.forEach((it) => {
-      const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
-      const user = (inp?.value || "").trim();
-      const ok = isAnswerCorrect(user, it.answer);
-
-      const mark = $(`#${CSS.escape(key + "_" + it.id)}_mark`);
-      if (mark) {
-        mark.className = "mark " + (ok ? "ok" : "bad");
-        mark.textContent = ok ? "✓" : "✗";
-      }
-      if (ok) correct++;
-      if (inp) inp.disabled = true;
-    });
-
-    addStars(session.login, correct);
-    markAttempt(session.login, key);
-
-    saveTeacherResult({
-      type: "test",
-      login: session.login,
-      when: new Date().toISOString(),
-      test: test.title,
-      score: `${correct}/10`,
-      stars: correct,
-    });
-
-    renderApp(session);
-  }
-
-  function isAnswerCorrect(user, expected) {
-    if (expected === "ok") return user.length > 0;
-
-    const norm = (x) =>
-      String(x || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " ");
-
-    return norm(user) === norm(expected);
-  }
-
-  function setAttemptUI(session, unit, ex) {
-    if (session.role !== "student") return;
-    const key = `unit_${unit.id}_${ex.id}`;
-    const attempted = hasAttempt(session.login, key);
-    const info = $("#attemptInfo");
-    const btn = $("#submitBtn");
-    if (attempted) {
-      if (info) info.textContent = "Attempt used (1 try).";
-      if (btn) btn.disabled = true;
-      $$(".ans").forEach((i) => (i.disabled = true));
-    } else {
-      if (info) info.textContent = "1 attempt.";
-      if (btn) btn.disabled = false;
-    }
-  }
-
-  function setAttemptUI_Test(session, test) {
-    if (session.role !== "student") return;
-    const key = `test_${test.id}`;
-    const attempted = hasAttempt(session.login, key);
-    const info = $("#attemptInfoTest");
-    const btn = $("#submitTestBtn");
-    if (attempted) {
-      if (info) info.textContent = "Attempt used (1 try).";
-      if (btn) btn.disabled = true;
-      $$(".ans").forEach((i) => (i.disabled = true));
-    } else {
-      if (info) info.textContent = "1 attempt.";
-      if (btn) btn.disabled = false;
-    }
-  }
-
-  // ---------- teacher journal ----------
-  function saveTeacherResult(row) {
-    const all = loadJSON(LS.teacher, []);
-    all.push(row);
-    saveJSON(LS.teacher, all);
-  }
-
-  function renderTeacher() {
-    const card = $("#teacherCard");
-    if (!card) return;
-
-    const all = loadJSON(LS.teacher, []);
-    if (!all.length) {
-      card.innerHTML = `<div class="muted">No results yet.</div>`;
-      return;
-    }
-
-    const rows = all
-      .slice()
-      .reverse()
-      .slice(0, 200)
-      .map((r) => {
-        const when = new Date(r.when);
-        const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
-        const title = r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
-        return `
-          <tr>
-            <td>${esc(w)}</td>
-            <td>${esc(r.login)}</td>
-            <td>${esc(r.type)}</td>
-            <td>${esc(title)}</td>
-            <td><b>${esc(r.score)}</b></td>
-            <td>⭐ ${esc(r.stars)}</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    card.innerHTML = `
-      <div class="tableWrap">
-        <table class="t">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Login</th>
-              <th>Type</th>
-              <th>Unit/Test</th>
-              <th>Score</th>
-              <th>Stars</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      <div class="mutedSmall">Saved in this browser (localStorage).</div>
-    `;
-  }
-
-  // ---------- themes ----------
-  function getUnitTheme(i) {
-    const palette = [
-      "#7C4DFF", // 1 purple
-      "#00BFA6", // 2 green-blue
-      "#1E88E5", // 3 blue
-      "#43A047", // 4 green
-      "#FB8C00", // 5 orange
-      "#E53935", // 6 red
-      "#8E24AA", // 7 violet
-      "#00897B", // 8 teal
-      "#3949AB", // 9 indigo
-      "#6D4C41", // 10 brown
-      "#F4511E", // 11 deep orange
-      "#039BE5", // 12 light blue
-      "#5E35B1", // 13 purple
-      "#2E7D32", // 14 dark green
-      "#C0CA33", // 15 lime
-    ];
-    const base = palette[i % palette.length];
-    const shades = makeShades(base, 5);
-    return { base, shades };
-  }
-
-  function makeShades(hex, n) {
-    const rgb = hexToRgb(hex);
-    const res = [];
-    for (let i = 0; i < n; i++) {
-      const t = 0.12 + i * 0.12;
-      res.push(rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, t)));
-    }
-    return res;
-  }
-
-  function hexToRgb(hex) {
-    const h = hex.replace("#", "");
-    const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-    const num = parseInt(full, 16);
-    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-  }
-  function mix(a, b, t) {
-    return {
-      r: Math.round(a.r * (1 - t) + b.r * t),
-      g: Math.round(a.g * (1 - t) + b.g * t),
-      b: Math.round(a.b * (1 - t) + b.b * t),
-    };
-  }
-  function rgbToHex(c) {
-    const h = (v) => v.toString(16).padStart(2, "0");
-    return `#${h(c.r)}${h(c.g)}${h(c.b)}`;
+    if (s.includes("check")) return "Send your sentence and I’ll check it (grammar + correction).";
+    return "Ask about Unit 1–15. I will explain with a formula and examples.";
   }
 
   // ---------- init ----------
