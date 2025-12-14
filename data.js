@@ -1,94 +1,136 @@
 window.APP_DATA = {
-  groups: [
-    {
-      id: "u1-3",
-      title: "Units 1-3",
-      rules: [
-        {
-          title: "Present Simple",
-          formula: [
-            "I/You/We/They + V1",
-            "He/She/It + V1 + s/es",
-            "Neg: don't / doesn't + V1",
-            "Q: Do/Does + subject + V1 ?"
-          ],
-          ru: "Привычки, факты, расписание. Маркеры: always, usually, every day."
-        },
-        {
-          title: "Present Continuous",
-          formula: [
-            "am/is/are + V-ing",
-            "Neg: am not / isn't / aren't + V-ing",
-            "Q: Am/Is/Are + subject + V-ing ?"
-          ],
-          ru: "Действие сейчас/в момент речи. Маркеры: now, at the moment."
-        }
-      ],
-      exercises: [
-        {
-          id:"ex1",
-          title:"Exercise 1",
-          type:"mc",
-          items:[
-            {text:"I ____ salad for lunch today.", options:["have","am having","has"], answer:1},
-            {text:"Mum ____ the shopping every Saturday.", options:["does","is doing","do"], answer:0},
-            {text:"What ____ right now?", options:["you do","are you doing","do you"], answer:1},
-            {text:"Sam ____ mushrooms very much.", options:["doesn't like","isn't liking","don't like"], answer:0},
-            {text:"It's warm but the sun ____ .", options:["doesn't shine","isn't shining","don't shine"], answer:1}
-          ]
-        },
-        { id:"ex2", title:"Exercise 2", type:"input", items:[
-          {text:"Usually I (go) ____ to school by bus.", answer:"go"},
-          {text:"Right now she (read) ____ .", answer:"is reading"},
-          {text:"He (not like) ____ milk.", answer:"doesn't like"},
-          {text:"We (play) ____ now.", answer:"are playing"},
-          {text:"They (watch) ____ TV every evening.", answer:"watch"}
-        ]},
-        { id:"ex3", title:"Exercise 3", type:"mc", items:[
-          {text:"We ____ a great time at the party.", options:["have","had","has"], answer:1},
-          {text:"Phil and Matt ____ football all afternoon.", options:["play","played","are playing"], answer:1},
-          {text:"Dad ____ the car outside the cinema.", options:["stopped","stop","is stopping"], answer:0},
-          {text:"Chloe ____ very happy this morning.", options:["wasn't","isn't","weren't"], answer:0},
-          {text:"The people ____ their hands.", options:["clap","clapped","are clapping"], answer:1}
-        ]},
-        { id:"ex4", title:"Exercise 4", type:"mc", items:[
-          {text:"I started at this school two years ____.", options:["ago","last","week"], answer:0},
-          {text:"Cathy didn't watch TV ____ evening.", options:["yesterday","tomorrow","soon"], answer:0},
-          {text:"My aunt phoned ____ night.", options:["last","next","ago"], answer:0},
-          {text:"They weren't late yesterday ____.", options:["morning","week","month"], answer:0},
-          {text:"We moved house last ____.", options:["week","ago","morning"], answer:0}
-        ]},
-        { id:"ex5", title:"Exercise 5", type:"input", items:[
-          {text:"We (see) ____ lots of interesting things.", answer:"saw"},
-          {text:"The children (not eat) ____ any jelly.", answer:"didn't eat"},
-          {text:"My cousins (go) ____ to New York.", answer:"went"},
-          {text:"I (not think) ____ the exam was easy.", answer:"didn't think"},
-          {text:"Milly (buy) ____ souvenirs.", answer:"bought"}
-        ]}
-      ],
-      tests: [
-        { id:"t1", title:"Test 1: Present simple & continuous", itemsCount:15 },
-        { id:"t2", title:"Test 2: Past simple", itemsCount:15 },
-        { id:"t3", title:"Test 3: Possessive pronouns", itemsCount:12 },
-        { id:"t4", title:"Test 4: Will/won't & future", itemsCount:12 }
-      ]
-    }
-  ],
-
   auth: {
     studentPin: "2844",
     teacherPin: "3244",
-    logins: Array.from({length:15}, (_,i)=>`4GL${i+1}`)
+    logins: Array.from({ length: 15 }, (_, i) => `4GL${i + 1}`)
   },
 
+  // Названия юнитов из Contents :contentReference[oaicite:2]{index=2}
+  groups: [
+    makeGroup("u1-3", "Units 1–3", [
+      rule("Like + -ing; can/can’t; a/an/some; be going to", [
+        "like + V-ing",
+        "can / can’t + V1",
+        "a/an + singular; some + plural/uncountable",
+        "be going to + V1"
+      ], "Like + V-ing: люблю делать. Can/can’t: могу/не могу. a/an/some: артикли и some. be going to: план/намерение.")
+    ]),
+
+    makeGroup("u4-6", "Units 4–6", [
+      rule("Present simple & present continuous", [
+        "PS: I/you/we/they + V1; he/she/it + V1+s/es",
+        "PC: am/is/are + V-ing"
+      ], "PS — привычки/факты. PC — действие сейчас."),
+      rule("Adverbs of frequency", [
+        "always / usually / often / sometimes / never",
+        "S + adv + V1  (I usually play...)",
+        "be + adv (He is always late.)"
+      ], "Наречия частоты: ставим перед смысловым глаголом, после am/is/are.")
+    ]),
+
+    makeGroup("u7-9", "Units 7–9", [
+      rule("Past simple (1): be, have, regular verbs", [
+        "was/were",
+        "had",
+        "V-ed (regular)"
+      ], "Прошедшее: was/were, had, правильные глаголы -ed."),
+      rule("Past time expressions", [
+        "yesterday / last night / last week",
+        "two days ago"
+      ], "Слова времени для Past Simple.")
+    ]),
+
+    makeGroup("u10-12", "Units 10–12", [
+      rule("Past simple (2): irregular verbs", [
+        "go → went, see → saw, buy → bought",
+        "Neg: didn’t + V1",
+        "Q: Did + S + V1 ?"
+      ], "Неправильные глаголы: 2 форма. Отрицание/вопрос через did."),
+      rule("Possessive pronouns + adverbs", [
+        "mine, yours, his, hers, ours, theirs",
+        "quickly, slowly, carefully…"
+      ], "Притяжательные местоимения и наречия.")
+    ]),
+
+    makeGroup("u13-15", "Units 13–15", [
+      rule("Have to / imperative / why-because", [
+        "have to + V1",
+        "Imperative: Sit down! Don’t run!",
+        "Why…? Because…"
+      ], "Обязанность, повелительное наклонение, why-because."),
+      rule("Comparatives & superlatives / will-won’t / future expressions", [
+        "taller / the tallest",
+        "will / won’t + V1",
+        "tomorrow / next week"
+      ], "Сравнения, будущее will/won’t, слова будущего."),
+      rule("Present perfect + ever/never; should/shouldn’t; could/couldn’t", [
+        "have/has + V3",
+        "ever / never",
+        "should / shouldn’t",
+        "could / couldn’t"
+      ], "Present Perfect + ever/never и модальные should/could."),
+      rule("Object pronouns / relative pronouns / past continuous", [
+        "me, you, him, her, it, us, them",
+        "who / which",
+        "was/were + V-ing"
+      ], "Объектные местоимения, who/which, Past Continuous.")
+    ])
+  ],
+
   aiBayan: {
-    welcome: "Сәлем! I’m AI Bayan 😊 Ask me ONE grammar question per day.",
+    welcome: "Сәлем! I’m AI Bayan 😊 You can ask ONE question per day.",
     quick: [
       "Explain Present Simple (RU)",
       "Explain Present Continuous (RU)",
+      "Explain Past Simple (RU)",
       "Give 5 examples",
-      "Make 5 questions",
       "Check my sentence"
     ]
   }
 };
+
+// helpers
+function makeGroup(id, title, rules) {
+  return {
+    id,
+    title,
+    rules,
+    exercises: [
+      stubExercise("ex1", "Exercise 1"),
+      stubExercise("ex2", "Exercise 2"),
+      stubExercise("ex3", "Exercise 3"),
+      stubExercise("ex4", "Exercise 4"),
+      stubExercise("ex5", "Exercise 5")
+    ],
+    tests: [
+      { id:"t1", title:"Test 1: The present simple and present continuous", itemsCount:15 },
+      { id:"t2", title:"Test 2: The past simple", itemsCount:15 },
+      { id:"t3", title:"Test 3: Possessive pronouns", itemsCount:12 },
+      { id:"t4", title:"Test 4: Will / won’t and future time expressions", itemsCount:12 },
+      { id:"t5", title:"Test 5: The present perfect with ‘ever’ and ‘never’", itemsCount:12 },
+      { id:"t6", title:"Test 6: Should / shouldn’t, could / couldn’t", itemsCount:12 },
+      { id:"t7", title:"Test 7: Object pronouns", itemsCount:12 },
+      { id:"t8", title:"Test 8: The past continuous", itemsCount:12 },
+      { id:"t9", title:"Test 9: The past simple and past continuous", itemsCount:12 },
+      { id:"t10", title:"Test 10: All grammar topics", itemsCount:20 }
+    ]
+  };
+}
+
+function rule(title, formula, ru) {
+  return { title, formula, ru };
+}
+
+function stubExercise(id, title){
+  return {
+    id, title,
+    type: "mc",
+    items: [
+      { text: "Sample question 1 ____.", options:["A","B","C"], answer:0 },
+      { text: "Sample question 2 ____.", options:["A","B","C"], answer:1 },
+      { text: "Sample question 3 ____.", options:["A","B","C"], answer:2 },
+      { text: "Sample question 4 ____.", options:["A","B","C"], answer:0 },
+      { text: "Sample question 5 ____.", options:["A","B","C"], answer:1 }
+    ]
+  };
+}
