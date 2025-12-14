@@ -89,16 +89,16 @@ window.APP_DATA = {
     { id:"t10", title:"Test 10: All grammar topics", itemsCount:20 }
   ],
 
-  aiBayan: {
-    welcome: "Сәлем! I’m AI Bayan 😊 You can ask ONE question per day.",
-    quick: [
-      "Explain Present Simple (RU)",
-      "Explain Present Continuous (RU)",
-      "Explain Past Simple (RU)",
-      "Give 5 examples",
-      "Check my sentence"
-    ]
-  }
+ aiBayan: {
+  welcome: "I’m AI Bayan. You can ask ONE question per day.",
+  quick: [
+    "Explain Present Simple (RU)",
+    "Explain Present Continuous (RU)",
+    "Explain Past Simple (RU)",
+    "Give 5 examples",
+    "Check my sentence"
+  ]
+}
 };
 
 function makeGroup(id, title, rules) {
