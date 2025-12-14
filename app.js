@@ -65,7 +65,9 @@
   }
 
   // ---------- DATA (fallback if data.js missing) ----------
-  // IMPORTANT: You can replace/extend content in data.js as window.APP_DATA
+  // Supports two formats:
+  // A) units: [{id:'u1', title, topic, ruleEn, ruleRu, exercises:[{id:'ex1', items:[{prompt,answer}]}]}]
+  // B) units: [{id: 1, title, color, rules:{title,en,ru}, tasks:{ex1:{items:[{q,a}]}...}}]
   const FALLBACK = {
     units: buildDefaultUnits(),
     tests: buildDefaultTests(),
@@ -73,135 +75,124 @@
 
   function getData() {
     const d = window.APP_DATA || {};
-    return {
-      units: Array.isArray(d.units) && d.units.length ? d.units : FALLBACK.units,
-      tests: Array.isArray(d.tests) && d.tests.length ? d.tests : FALLBACK.tests,
-    };
+    const rawUnits = Array.isArray(d.units) ? d.units : [];
+    const rawTests = Array.isArray(d.tests) ? d.tests : [];
+
+    const units =
+      rawUnits.length ? normalizeUnits(rawUnits) : FALLBACK.units;
+
+    const tests =
+      rawTests.length ? normalizeTests(rawTests) : FALLBACK.tests;
+
+    return { units, tests };
   }
 
-  // Topics aligned with Grammar Friends 4 contents (paraphrased rules) :contentReference[oaicite:1]{index=1}
+  function normalizeUnits(rawUnits) {
+    // If already in format A (ruleEn/ruleRu + exercises array)
+    const looksLikeA =
+      rawUnits.some(
+        (u) =>
+          typeof u?.ruleEn === "string" ||
+          Array.isArray(u?.exercises)
+      );
+
+    if (looksLikeA) {
+      return rawUnits.map((u, idx) => {
+        const id = String(u.id || `u${idx + 1}`);
+        return {
+          id: id.startsWith("u") ? id : `u${id}`,
+          title: u.title || `Unit ${idx + 1}`,
+          topic: u.topic || u.rules?.title || "",
+          ruleEn: u.ruleEn || u.rules?.en || "",
+          ruleRu: u.ruleRu || u.rules?.ru || "",
+          exercises: Array.isArray(u.exercises) && u.exercises.length
+            ? u.exercises.map((e, eidx) => ({
+                id: e.id || `ex${eidx + 1}`,
+                title: e.title || `Exercise ${eidx + 1}`,
+                items: (e.items || []).map((it, ii) => ({
+                  id: it.id || `i${idx + 1}_${eidx + 1}_${ii + 1}`,
+                  prompt: it.prompt ?? it.q ?? "",
+                  answer: it.answer ?? it.a ?? "ok",
+                  kind: it.kind || "text",
+                })),
+              }))
+            : Array.from({ length: 5 }, (_, eidx) => ({
+                id: `ex${eidx + 1}`,
+                title: `Exercise ${eidx + 1}`,
+                items: buildDefaultItems(idx + 1, eidx + 1, 10),
+              })),
+        };
+      });
+    }
+
+    // Format B (rules/tasks)
+    return rawUnits.map((u, idx) => {
+      const num = Number(u.id || idx + 1);
+      const id = `u${num}`;
+      const ruleTitle = u.rules?.title || u.topic || "";
+      const ruleEn = u.rules?.en || u.ruleEn || "";
+      const ruleRu = u.rules?.ru || u.ruleRu || "";
+
+      // tasks -> exercises ex1..ex5
+      const exs = [];
+      for (let k = 1; k <= 5; k++) {
+        const key = `ex${k}`;
+        const items = u.tasks?.[key]?.items || [];
+        exs.push({
+          id: key,
+          title: `Exercise ${k}`,
+          items: (items.length ? items : buildDefaultItems(num, k, 10)).slice(0, 10).map((it, ii) => ({
+            id: it.id || `i${num}_${k}_${ii + 1}`,
+            prompt: it.prompt ?? it.q ?? "",
+            answer: it.answer ?? it.a ?? "ok",
+            kind: it.kind || "text",
+          })),
+        });
+      }
+
+      return {
+        id,
+        title: u.title || `Unit ${num}`,
+        topic: ruleTitle,
+        ruleEn,
+        ruleRu,
+        exercises: exs,
+      };
+    });
+  }
+
+  function normalizeTests(rawTests) {
+    // Accept {id,title,items:[{prompt,answer}]}
+    return rawTests.map((t, idx) => ({
+      id: String(t.id || `t${idx + 1}`).startsWith("t") ? String(t.id || `t${idx + 1}`) : `t${t.id}`,
+      title: t.title || `Test — Unit ${idx + 1}`,
+      items: (t.items || []).slice(0, 10).map((it, ii) => ({
+        id: it.id || `t${idx + 1}_q${ii + 1}`,
+        prompt: it.prompt ?? it.q ?? `Question ${ii + 1}`,
+        answer: it.answer ?? it.a ?? "ok",
+        kind: it.kind || "text",
+      })),
+    }));
+  }
+
+  // ---------- fallback content ----------
   function buildDefaultUnits() {
     const topics = [
-      {
-        title: "Unit 1",
-        topic: "Present Simple vs Present Continuous + Adverbs of frequency",
-        ruleEn:
-          "Present Simple: habits/facts. Form: I/You/We/They + V1; He/She/It + V1+s/es. Neg: don’t/doesn’t + V1. Q: Do/Does + S + V1?",
-        ruleRu:
-          "Present Simple: привычки/факты. I/You/We/They + V1; He/She/It + V1+s/es. Отрицание: don’t/doesn’t + V1. Вопрос: Do/Does + подл. + V1?",
-      },
-      {
-        title: "Unit 2",
-        topic: "Past Simple (be/have + regular verbs) + Past time expressions",
-        ruleEn:
-          "Past Simple: finished actions. Regular verbs: V + -ed. Be: was/were. Neg: didn’t + V1 (be: wasn’t/weren’t). Q: Did + S + V1? (be: Was/Were + S?).",
-        ruleRu:
-          "Past Simple: завершённые действия. Правильные: V + -ed. Be: was/were. Отрицание: didn’t + V1 (be: wasn’t/weren’t). Вопрос: Did + подл. + V1? (be: Was/Were + подл.?).",
-      },
-      {
-        title: "Unit 3",
-        topic: "Past Simple (irregular verbs) + questions/short answers",
-        ruleEn:
-          "Irregular verbs: V2 in affirmative (go→went). Neg/Q: didn’t + V1; Did + S + V1? Short: Yes, I did / No, I didn’t.",
-        ruleRu:
-          "Неправильные глаголы: V2 в утвердительном (go→went). Отриц/вопрос: didn’t + V1; Did + подл. + V1? Кратко: Yes, I did / No, I didn’t.",
-      },
-      {
-        title: "Unit 4",
-        topic: "Possessive pronouns + Adverbs",
-        ruleEn:
-          "Possessive pronouns replace a noun: mine, yours, his, hers, ours, theirs. (This is my bag → This is mine.) Adverbs often end -ly (quick→quickly).",
-        ruleRu:
-          "Притяжательные местоимения заменяют существительное: mine, yours, his, hers, ours, theirs. (This is my bag → This is mine.) Наречия часто с -ly (quick→quickly).",
-      },
-      {
-        title: "Unit 5",
-        topic: "Have to + Imperative + Why/Because",
-        ruleEn:
-          "Have to + V1 = must/need. Past: had to + V1. Imperative: Turn left. Why? → Because + reason.",
-        ruleRu:
-          "Have to + V1 = нужно/должен. Прош.: had to + V1. Повелит.: Turn left. Why? → Because + причина.",
-      },
-      {
-        title: "Unit 6",
-        topic: "Comparatives & Superlatives",
-        ruleEn:
-          "Comparative: -er / more + adj (taller, more comfortable). Superlative: the -est / the most (the tallest). Irregular: good→better→best; bad→worse→worst.",
-        ruleRu:
-          "Сравнительная: -er / more (taller, more comfortable). Превосходная: the -est / the most. Искл.: good→better→best; bad→worse→worst.",
-      },
-      {
-        title: "Unit 7",
-        topic: "Will / won’t + Future time expressions",
-        ruleEn:
-          "Future: will/won’t + V1. Q: Will + S + V1? Time: tomorrow, next week, in a month’s time, soon, later.",
-        ruleRu:
-          "Будущее: will/won’t + V1. Вопрос: Will + подл. + V1? Время: tomorrow, next week, in a month’s time, soon, later.",
-      },
-      {
-        title: "Unit 8",
-        topic: "Much/Many/Lots of/A lot of + Some/Any",
-        ruleEn:
-          "Much (uncountable) / Many (countable plural) in neg/Q. Lots of / a lot of in all. Some in affirmative; any in neg/Q.",
-        ruleRu:
-          "Much (неисч.) / Many (исч. мн.ч.) в отриц/вопросах. Lots of / a lot of — везде. Some в утвердит., any в отриц/вопросах.",
-      },
-      {
-        title: "Unit 9",
-        topic: "Infinitive of purpose + How often…?",
-        ruleEn:
-          "To + V1 shows purpose: I went to the shop to buy bread. How often…? → once/twice/three times a week; every day.",
-        ruleRu:
-          "To + V1 = цель: I went… to buy… How often…? → once/twice/three times a week; every day.",
-      },
-      {
-        title: "Unit 10",
-        topic: "Present Perfect (1)",
-        ruleEn:
-          "Present Perfect: have/has + V3 for life experience/recent result. Neg: haven’t/hasn’t + V3. Q: Have/Has + S + V3?",
-        ruleRu:
-          "Present Perfect: have/has + V3 (опыт/результат). Отриц.: haven’t/hasn’t + V3. Вопрос: Have/Has + подл. + V3?",
-      },
-      {
-        title: "Unit 11",
-        topic: "Present Perfect (2): ever / never",
-        ruleEn:
-          "Ever in questions: Have you ever…? Never in affirmative meaning ‘not at any time’: I’ve never…",
-        ruleRu:
-          "Ever в вопросах: Have you ever…? Never в утвердит. со значением «никогда»: I’ve never…",
-      },
-      {
-        title: "Unit 12",
-        topic: "Should / shouldn’t + Could / couldn’t",
-        ruleEn:
-          "Should/shouldn’t + V1 = advice. Could/couldn’t + V1 = ability/permission in the past or general ability.",
-        ruleRu:
-          "Should/shouldn’t + V1 = совет. Could/couldn’t + V1 = мог/не мог (умение/возможность).",
-      },
-      {
-        title: "Unit 13",
-        topic: "Object pronouns + Relative pronouns (who/which)",
-        ruleEn:
-          "Object pronouns: me, you, him, her, it, us, them. Relative: who (people), which (things).",
-        ruleRu:
-          "Объектные местоимения: me, you, him, her, it, us, them. Относит.: who (люди), which (вещи).",
-      },
-      {
-        title: "Unit 14",
-        topic: "Past Continuous + Dates / was born + On/In",
-        ruleEn:
-          "Past Continuous: was/were + V-ing (action in progress in the past). Dates: He was born on… On + days/dates; In + months/years.",
-        ruleRu:
-          "Past Continuous: was/were + V-ing (действие в процессе). Даты: He was born on… On + дни/даты; In + месяцы/годы.",
-      },
-      {
-        title: "Unit 15",
-        topic: "Past Simple vs Past Continuous + There/They’re/Their",
-        ruleEn:
-          "Past Simple (finished) vs Past Continuous (in progress). There = ‘там/есть’; they’re = they are; their = ‘их’.",
-        ruleRu:
-          "Past Simple (закончилось) vs Past Continuous (в процессе). There = «там/есть»; they’re = they are; their = «их».",
-      },
+      { title: "Unit 1", topic: "Present Simple vs Present Continuous", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 2", topic: "Past Simple", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 3", topic: "Irregular Verbs", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 4", topic: "Possessive Pronouns", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 5", topic: "Have to / Imperative", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 6", topic: "Comparatives / Superlatives", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 7", topic: "Will / Won’t", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 8", topic: "Much / Many / Some / Any", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 9", topic: "Infinitive of purpose", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 10", topic: "Present Perfect (1)", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 11", topic: "Present Perfect (2)", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 12", topic: "Should / Could", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 13", topic: "Object pronouns / who / which", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 14", topic: "Past Continuous", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
+      { title: "Unit 15", topic: "Past Simple vs Past Continuous", ruleEn: "Add your rule in data.js", ruleRu: "Добавь правило в data.js" },
     ];
 
     return topics.map((t, idx) => ({
@@ -210,7 +201,6 @@
       topic: t.topic,
       ruleEn: t.ruleEn,
       ruleRu: t.ruleRu,
-      // default 5 exercises, 10 items each
       exercises: Array.from({ length: 5 }, (_, e) => ({
         id: `ex${e + 1}`,
         title: `Exercise ${e + 1}`,
@@ -220,18 +210,17 @@
   }
 
   function buildDefaultItems(unitNum, exNum, n) {
-    // Simple safe placeholders; you can replace in data.js later
     const base = [
-      { q: "Write the correct form.", a: "ok" },
-      { q: "Choose the correct option.", a: "ok" },
-      { q: "Make a question.", a: "ok" },
-      { q: "Make a negative sentence.", a: "ok" },
-      { q: "Translate (RU→EN).", a: "ok" },
+      "Write the correct form.",
+      "Choose the correct option.",
+      "Make a question.",
+      "Make a negative sentence.",
+      "Translate (RU→EN).",
     ];
     return Array.from({ length: n }, (_, i) => ({
       id: `i${unitNum}_${exNum}_${i + 1}`,
-      prompt: base[i % base.length].q,
-      answer: base[i % base.length].a,
+      prompt: base[i % base.length],
+      answer: "ok",
       kind: "text",
     }));
   }
@@ -260,7 +249,7 @@
 
   // ---------- stars / attempts ----------
   function getStars() {
-    return loadJSON(LS.stars, {}); // {login: {points: number}}
+    return loadJSON(LS.stars, {});
   }
   function addStars(login, delta) {
     const stars = getStars();
@@ -270,11 +259,11 @@
   }
   function getTotalStars(login) {
     const stars = getStars();
-    return (stars[login]?.points || 0);
+    return stars[login]?.points || 0;
   }
 
   function getAttempts() {
-    return loadJSON(LS.attempts, {}); // {login: {key: true}}
+    return loadJSON(LS.attempts, {});
   }
   function markAttempt(login, key) {
     const all = getAttempts();
@@ -301,6 +290,29 @@
     saveJSON(LS.chat, chat);
   }
 
+  // ---------- PRINT with watermark ----------
+  function printWithWatermark() {
+    const wm = document.createElement("div");
+    wm.id = "__wm";
+    wm.textContent = APP_TITLE;
+    wm.style.position = "fixed";
+    wm.style.left = "50%";
+    wm.style.top = "50%";
+    wm.style.transform = "translate(-50%,-50%) rotate(-25deg)";
+    wm.style.fontSize = "64px";
+    wm.style.fontWeight = "900";
+    wm.style.opacity = "0.08";
+    wm.style.pointerEvents = "none";
+    wm.style.zIndex = "999999";
+    document.body.appendChild(wm);
+
+    window.print();
+
+    setTimeout(() => {
+      wm.remove();
+    }, 300);
+  }
+
   // ---------- rendering ----------
   function mount() {
     const session = getSession();
@@ -324,31 +336,30 @@
 
           <div class="loginForm">
             <label>Login</label>
-            <input id="loginInput" class="input" placeholder="4GL1" autocomplete="username" />
+            <input id="loginInput" class="input" autocomplete="username" />
             <label>PIN</label>
-            <input id="pinInput" class="input" placeholder="****" type="password" autocomplete="current-password" />
+            <input id="pinInput" class="input" type="password" inputmode="numeric" autocomplete="current-password" />
             <button id="loginBtn" class="btnPrimary">Enter</button>
           </div>
-
-          <div class="loginHint"> </div>
         </div>
       </div>
     `;
     $("#app").innerHTML = html;
 
     $("#loginBtn").onclick = () => {
-      const login = ($("#loginInput").value || "").trim();
+      const loginRaw = ($("#loginInput").value || "").trim();
       const pin = ($("#pinInput").value || "").trim();
 
-      if (!login || !pin) return renderLogin("Fill in Login and PIN.");
+      if (!pin) return renderLogin("Enter PIN.");
 
-      // teacher
+      // teacher by PIN only
       if (pin === AUTH.teacherPin) {
-        setSession({ role: "teacher", login: login || "TEACHER" });
+        setSession({ role: "teacher", login: "TEACHER" });
         return mount();
       }
 
       // student
+      const login = loginRaw;
       const okLogin = AUTH.logins.includes(login);
       const okPin = pin === AUTH.studentPin;
       if (!okLogin || !okPin) return renderLogin("Wrong login or PIN.");
@@ -359,9 +370,10 @@
 
   function renderApp(session) {
     const data = getData();
+
     const unit = data.units.find((u) => u.id === state.unitId) || data.units[0];
-    const unitIndex = data.units.findIndex((u) => u.id === unit.id);
-    const ex = (unit.exercises || []).find((e) => e.id === state.exId) || unit.exercises[0];
+    const unitIndex = Math.max(0, data.units.findIndex((u) => u.id === unit.id));
+    const ex = (unit.exercises || []).find((e) => e.id === state.exId) || (unit.exercises || [])[0];
     const test = data.tests.find((t) => t.id === state.testId) || data.tests[0];
 
     const totalStars = session.role === "student" ? getTotalStars(session.login) : 0;
@@ -424,7 +436,7 @@
       </div>
     `;
 
-    // bind
+    // nav
     $$(".navBtn[data-view]").forEach((b) => {
       b.onclick = () => {
         state.view = b.dataset.view;
@@ -441,7 +453,7 @@
       mount();
     };
 
-    $("#printBtn").onclick = () => window.print();
+    $("#printBtn").onclick = () => printWithWatermark();
 
     // sms
     $("#smsBtn").onclick = () => {
@@ -502,8 +514,6 @@
     if (state.view === "teacher") {
       renderTeacher(session);
     }
-
-    // show feedback icons style hook
   }
 
   function renderMain(session, data, unit, ex, test, theme) {
@@ -576,14 +586,13 @@
     }
 
     if (state.view === "teacher") {
+      // ✅ IMPORTANT: do NOT use unit.* here (teacher page is global)
       return `
-  <div class="unit-header unit-${unit.color}">
-    <img src="logo.png" class="unit-logo" alt="AI Bayan">
-    <div>
-      <div class="unit-title">${esc(unit.title)}</div>
-      <div class="unit-sub">${esc(unit.topic || unit.rules?.title || "")}</div>
-    </div>
-  </div>
+        <div class="pageHeader">
+          <div class="pageTitle">Teacher Journal</div>
+          <div class="pageSub">Saved in this browser (localStorage)</div>
+        </div>
+
         <div class="card" id="teacherCard">
           <div class="muted">Loading…</div>
         </div>
@@ -591,7 +600,7 @@
     }
 
     // unit view
-    const exTabs = unit.exercises
+    const exTabs = (unit.exercises || [])
       .map((e, idx) => {
         const shade = theme.shades[idx] || theme.base;
         const active = e.id === ex.id ? "active" : "";
@@ -606,7 +615,7 @@
         <div class="ruleTop">
           <img class="ruleLogo" src="logo.png" alt="logo"/>
           <div>
-            <div class="ruleTitle">Grammar rule</div>
+            <div class="ruleTitle">${esc(unit.title)}</div>
             <div class="ruleTopic">${esc(unit.topic)}</div>
           </div>
         </div>
@@ -656,7 +665,7 @@
                   <div class="qText">${esc(it.prompt)}</div>
                 </div>
                 <div class="a">
-                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" placeholder="Answer..." />
+                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" />
                   <div class="mark" id="${esc(id)}_mark"></div>
                 </div>
               </div>
@@ -691,7 +700,7 @@
             <div class="chatLog" id="chatLog"></div>
 
             <div class="chatInputRow">
-              <input id="chatInput" class="input" placeholder="Type your question..." ${locked ? "disabled" : ""}/>
+              <input id="chatInput" class="input" ${locked ? "disabled" : ""}/>
               <button id="chatSend" class="btnPrimary" ${locked ? "disabled" : ""}>Send</button>
             </div>
 
@@ -709,7 +718,6 @@
   }
 
   function setChatUI(session) {
-    const chat = loadJSON(LS.chat, {});
     const login = session.login || "user";
     const logKey = `log_${login}`;
     const history = loadJSON(logKey, []);
@@ -754,12 +762,10 @@
       return;
     }
 
-    // Save user msg
     const logKey = `log_${login}`;
     const history = loadJSON(logKey, []);
     history.push({ role: "user", text: msg });
 
-    // Simple local “AI” response (offline). You can replace with real API later.
     const reply = buildLocalAIReply(msg);
     history.push({ role: "ai", text: reply });
 
@@ -767,25 +773,35 @@
 
     if (session.role === "student") markAskedToday(login);
 
-    // re-render modal only
     setChatUI(session);
+
     const inp = $("#chatInput");
     if (inp) inp.value = "";
 
-    const info = $("#chatLimitInfo");
-    if (info && session.role === "student") info.textContent = "Limit reached for today. Come back tomorrow.";
-    if ($("#chatSend")) $("#chatSend").disabled = session.role === "student";
-    if ($("#chatInput")) $("#chatInput").disabled = session.role === "student";
+    // lock only if student after first question
+    if (session.role === "student") {
+      const info = $("#chatLimitInfo");
+      if (info) info.textContent = "Limit reached for today. Come back tomorrow.";
+      const b = $("#chatSend");
+      const i = $("#chatInput");
+      if (b) b.disabled = true;
+      if (i) i.disabled = true;
+    }
   }
 
   function buildLocalAIReply(q) {
     const s = q.toLowerCase();
-    if (s.includes("present simple")) return "Present Simple (RU): привычки/факты. Формула: I/You/We/They + V1; He/She/It + V1+s/es. Отриц: don’t/doesn’t + V1. Вопрос: Do/Does + S + V1?";
-    if (s.includes("present continuous")) return "Present Continuous (RU): действие сейчас/временно. Формула: am/is/are + V-ing. Отриц: am not / isn’t / aren’t + V-ing. Вопрос: Am/Is/Are + S + V-ing?";
-    if (s.includes("past simple")) return "Past Simple (RU): завершённое действие в прошлом. Формула: V2 или V-ed. Отриц: didn’t + V1. Вопрос: Did + S + V1?";
-    if (s.includes("examples")) return "5 examples:\n1) I go to school every day.\n2) She plays tennis on Sundays.\n3) They aren’t watching TV now.\n4) We went to the park yesterday.\n5) Have you ever been to London?";
-    if (s.includes("check")) return "Send your sentence and I’ll check it (grammar + correction).";
-    return "Write your question about grammar (Unit 1–15) and I will explain with a formula and examples.";
+    if (s.includes("present simple"))
+      return "Present Simple (RU): привычки/факты. Формула: I/You/We/They + V1; He/She/It + V1+s/es. Отриц: don’t/doesn’t + V1. Вопрос: Do/Does + S + V1?";
+    if (s.includes("present continuous"))
+      return "Present Continuous (RU): действие сейчас/временно. Формула: am/is/are + V-ing. Отриц: am not / isn’t / aren’t + V-ing. Вопрос: Am/Is/Are + S + V-ing?";
+    if (s.includes("past simple"))
+      return "Past Simple (RU): завершённое действие в прошлом. Формула: V2 или V-ed. Отриц: didn’t + V1. Вопрос: Did + S + V1?";
+    if (s.includes("examples"))
+      return "5 examples:\n1) I go to school every day.\n2) She plays tennis on Sundays.\n3) They aren’t watching TV now.\n4) We went to the park yesterday.\n5) Have you ever been to London?";
+    if (s.includes("check"))
+      return "Send your sentence and I’ll check it (grammar + correction).";
+    return "Write your grammar question (Unit 1–15). I will explain with formula + examples.";
   }
 
   // ---------- checking (✅/❌ + stars) ----------
@@ -811,11 +827,9 @@
       if (inp) inp.disabled = true;
     });
 
-    // stars: 1 star per correct answer
     addStars(session.login, correct);
     markAttempt(session.login, key);
 
-    // store result for teacher journal
     saveTeacherResult({
       type: "exercise",
       login: session.login,
@@ -851,7 +865,6 @@
       if (inp) inp.disabled = true;
     });
 
-    // stars: 1 star per correct
     addStars(session.login, correct);
     markAttempt(session.login, key);
 
@@ -868,7 +881,6 @@
   }
 
   function isAnswerCorrect(user, expected) {
-    // For now: if expected is "ok" accept any non-empty; else compare normalized
     if (expected === "ok") return user.length > 0;
 
     const norm = (x) =>
@@ -919,7 +931,7 @@
     saveJSON(LS.teacher, all);
   }
 
-  function renderTeacher(session) {
+  function renderTeacher() {
     const card = $("#teacherCard");
     if (!card) return;
 
@@ -936,8 +948,7 @@
       .map((r) => {
         const when = new Date(r.when);
         const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
-        const title =
-          r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
+        const title = r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
         return `
           <tr>
             <td>${esc(w)}</td>
@@ -972,24 +983,23 @@
   }
 
   // ---------- themes ----------
-  // 15 different base colors (greenish-blue app overall), with 5 shades each
   function getUnitTheme(i) {
     const palette = [
-      "#7C4DFF", // u1 purple
-      "#00BFA6",
-      "#1E88E5",
-      "#43A047",
-      "#FB8C00",
-      "#E53935",
-      "#8E24AA",
-      "#00897B",
-      "#3949AB",
-      "#6D4C41",
-      "#F4511E",
-      "#039BE5",
-      "#5E35B1",
-      "#2E7D32",
-      "#C0CA33",
+      "#7C4DFF", // 1 purple
+      "#00BFA6", // 2 green-blue
+      "#1E88E5", // 3 blue
+      "#43A047", // 4 green
+      "#FB8C00", // 5 orange
+      "#E53935", // 6 red
+      "#8E24AA", // 7 violet
+      "#00897B", // 8 teal
+      "#3949AB", // 9 indigo
+      "#6D4C41", // 10 brown
+      "#F4511E", // 11 deep orange
+      "#039BE5", // 12 light blue
+      "#5E35B1", // 13 purple
+      "#2E7D32", // 14 dark green
+      "#C0CA33", // 15 lime
     ];
     const base = palette[i % palette.length];
     const shades = makeShades(base, 5);
@@ -997,11 +1007,10 @@
   }
 
   function makeShades(hex, n) {
-    // simple shade generator by mixing with white
     const rgb = hexToRgb(hex);
     const res = [];
     for (let i = 0; i < n; i++) {
-      const t = 0.12 + i * 0.12; // mix strength
+      const t = 0.12 + i * 0.12;
       res.push(rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, t)));
     }
     return res;
@@ -1012,7 +1021,7 @@
     const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
     const num = parseInt(full, 16);
     return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-    }
+  }
   function mix(a, b, t) {
     return {
       r: Math.round(a.r * (1 - t) + b.r * t),
