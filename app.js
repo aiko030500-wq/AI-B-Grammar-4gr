@@ -38,7 +38,7 @@
       localStorage.setItem(LS.aiCount, "0");
       return true;
     }
-    return cnt < 1; // лимит 1 вопрос/день
+    return cnt < 1;
   };
   const incAI = () => {
     const cnt = Number(localStorage.getItem(LS.aiCount) || "0");
@@ -46,10 +46,9 @@
   };
 
   const state = {
+    view: "units",      // units | tests | teacher
     groupId: "u1-3",
     exerciseId: "ex1",
-    view: "units", // units | tests | teacher
-    tab: "exercise",
     lastScore: null
   };
 
@@ -60,11 +59,12 @@
       return;
     }
     renderApp(session);
-    renderAIDock(session);
+    renderAIDock();
   }
 
   function renderLogin(errMsg="") {
     const logins = window.APP_DATA.auth.logins;
+
     $("#app").innerHTML = `
       <div class="header">
         <div class="brand">
@@ -85,20 +85,20 @@
           <img src="logo.png" alt="logo" />
           <div>
             <p class="loginTitle">Enter Login + PIN</p>
-            <p class="loginHint">Students: choose 4GL1–4GL15. Teacher: PIN 3244.</p>
+            <p class="loginHint">Students: 4GL1–4GL15 • Teacher: PIN 3244</p>
           </div>
         </div>
 
         <div class="grid2">
           <div class="full">
-            <label style="font-weight:900;">Login</label>
+            <label style="font-weight:1000;">Login</label>
             <select id="loginSel">
               ${logins.map(l=>`<option value="${l}">${l}</option>`).join("")}
             </select>
           </div>
 
           <div class="full">
-            <label style="font-weight:900;">PIN</label>
+            <label style="font-weight:1000;">PIN</label>
             <input id="pinInp" type="text" inputmode="numeric" placeholder="2844 or 3244" />
           </div>
 
@@ -153,11 +153,7 @@
       ${headerHTML(session)}
 
       <div class="shell">
-        <aside class="sidebar">
-          <button class="sidebtn ${state.view==="units"?"active":""}" data-view="units">Units 1-3</button>
-          <button class="sidebtn ${state.view==="tests"?"active":""}" data-view="tests">Tests</button>
-          <button class="sidebtn ${state.view==="teacher"?"active":""}" data-view="teacher">Teacher Journal</button>
-        </aside>
+        <aside class="sidebar" id="sidebar"></aside>
 
         <main class="main">
           <section class="content" id="content"></section>
@@ -168,23 +164,53 @@
     $("#logoutBtn").onclick = () => { clearSession(); mount(); };
     $("#printBtn").onclick = () => window.print();
 
-    document.querySelectorAll(".sidebtn").forEach(b=>{
-      b.onclick = () => { state.view = b.dataset.view; renderContent(session); };
-    });
-
+    buildSidebar(session);
     renderContent(session);
+  }
+
+  function buildSidebar(session){
+    const sb = $("#sidebar");
+    sb.innerHTML = `
+      ${window.APP_DATA.groups.map(g => `
+        <button class="sidebtn ${state.view==="units" && state.groupId===g.id ? "active":""}"
+                data-view="units" data-gid="${g.id}">
+          ${g.title}
+        </button>
+      `).join("")}
+
+      <button class="sidebtn ${state.view==="tests" ? "active":""}" data-view="tests">Tests</button>
+      <button class="sidebtn ${state.view==="teacher" ? "active":""}" data-view="teacher">Teacher Journal</button>
+    `;
+
+    sb.querySelectorAll(".sidebtn").forEach(b=>{
+      b.onclick = () => {
+        const view = b.dataset.view;
+        state.view = view;
+
+        if (view === "units") {
+          state.groupId = b.dataset.gid;
+          state.exerciseId = "ex1";
+          state.lastScore = null;
+        }
+
+        renderApp(session);
+      };
+    });
   }
 
   function renderContent(session){
     const content = $("#content");
+
     if (state.view === "teacher") {
       content.innerHTML = renderTeacher();
       return;
     }
+
     if (state.view === "tests") {
       content.innerHTML = renderTests();
       return;
     }
+
     content.innerHTML = renderUnits(session);
     wireUnits(session);
   }
@@ -193,7 +219,6 @@
     if (!group.rules?.length) return "";
     return `
       <div class="rulesWrap">
-        <div class="breadcrumb">Grammar Friends • Level 4 • ${group.title}</div>
         ${group.rules.map(r=>`
           <div class="ruleBox">
             <h3>${r.title}</h3>
@@ -233,7 +258,8 @@
     document.querySelectorAll(".tab").forEach(t=>{
       t.onclick = () => {
         state.exerciseId = t.dataset.ex;
-        renderContent(session);
+        state.lastScore = null;
+        renderApp(session);
       };
     });
     wireCheckButtons(session);
@@ -276,7 +302,7 @@
       : (state.lastScore ? `<div class="scoreBar">${state.lastScore}</div>` : "");
 
     return `
-      <div style="font-weight:1000; margin-bottom:8px;">${ex.title}</div>
+      <div style="font-weight:1100; margin-bottom:8px;">${ex.title}</div>
       <div>${body}</div>
 
       ${scoreBar}
@@ -294,7 +320,6 @@
   }
 
   function wireCheckButtons(session){
-    const content = $("#content");
     const group = window.APP_DATA.groups.find(g=>g.id===state.groupId);
     const ex = group.exercises.find(e=>e.id===state.exerciseId);
     const key = exKey(session, group.id, ex.id);
@@ -302,12 +327,10 @@
 
     $("#resetBtn").onclick = () => {
       state.lastScore = null;
-      // reset only UI (не снимаем lock, потому что 1 попытка!)
-      renderContent(session);
+      renderApp(session);
     };
 
     $("#showBtn").onclick = () => {
-      // показываем ответы подсказкой (без копирования из книги)
       alert(ex.items.map((it,i)=>{
         const a = ex.type==="mc" ? it.options[it.answer] : it.answer;
         return `${i+1}) ${a}`;
@@ -321,56 +344,53 @@
       if (attempts[key]?.done) return;
 
       let score = 0;
-      const marks = [];
 
       if (ex.type==="mc") {
-        content.querySelectorAll("select[data-i]").forEach(sel=>{
+        document.querySelectorAll("select[data-i]").forEach(sel=>{
           const i = Number(sel.dataset.i);
           const ok = Number(sel.value) === ex.items[i].answer;
           score += ok ? 1 : 0;
-          marks.push({el: sel, ok});
+
+          const mark = document.createElement("div");
+          mark.className = "mark " + (ok ? "ok":"bad");
+          mark.textContent = ok ? "✓" : "✕";
+          sel.parentElement.appendChild(mark);
         });
       } else {
-        content.querySelectorAll("input[data-i]").forEach(inp=>{
+        document.querySelectorAll("input[data-i]").forEach(inp=>{
           const i = Number(inp.dataset.i);
           const user = (inp.value || "").trim().toLowerCase();
           const ans = String(ex.items[i].answer).trim().toLowerCase();
           const ok = user === ans;
           score += ok ? 1 : 0;
-          marks.push({el: inp, ok});
+
+          const mark = document.createElement("div");
+          mark.className = "mark " + (ok ? "ok":"bad");
+          mark.textContent = ok ? "✓" : "✕";
+          inp.parentElement.appendChild(mark);
         });
       }
-
-      // визуальные галочки/крестики
-      marks.forEach(m=>{
-        const mark = document.createElement("div");
-        mark.className = "mark " + (m.ok ? "ok":"bad");
-        mark.textContent = m.ok ? "✓" : "✕";
-        m.el.parentElement.appendChild(mark);
-      });
 
       attempts[key] = { done:true, score, total: ex.items.length, when: new Date().toISOString() };
       setAttempts(attempts);
 
       state.lastScore = `Your score is ${score} / ${ex.items.length}`;
-      // перерисуем, чтобы заблокировать
-      renderContent(session);
+      renderApp(session);
     };
   }
 
   function renderTests(){
-    const group = window.APP_DATA.groups.find(g=>g.id===state.groupId);
     return `
       <div class="breadcrumb">Grammar Friends • Level 4 • Tests</div>
       <h2 class="title">Choose a test</h2>
       <div class="card">
-        ${group.tests.map(t=>`
-          <div style="padding:10px 6px;border-bottom:1px dashed rgba(0,0,0,.12);font-weight:900;">
-            ${t.title} <span style="color:var(--muted);font-weight:800;">(${t.itemsCount} items)</span>
+        ${window.APP_DATA.testsCatalog.map(t=>`
+          <div style="padding:10px 6px;border-bottom:1px dashed rgba(0,0,0,.12);font-weight:1000;">
+            ${t.title} <span style="color:var(--muted);font-weight:900;">(${t.itemsCount} items)</span>
           </div>
         `).join("")}
         <div class="aiTiny" style="margin-top:10px;">
-          (Дальше я добавлю сами тесты как отдельные экраны — скажи “делаем тест 1”)
+          Next: I can build each test as a real interactive page (Test 1–10).
         </div>
       </div>
     `;
@@ -396,27 +416,26 @@
       <div class="card">
         ${rows.length ? rows.map(r=>`
           <div style="padding:10px 6px;border-bottom:1px dashed rgba(0,0,0,.12);">
-            <div style="font-weight:1000;">${r.who} • ${r.group} • ${r.ex}</div>
-            <div style="color:var(--muted);font-weight:800;">
+            <div style="font-weight:1100;">${r.who} • ${r.group} • ${r.ex}</div>
+            <div style="color:var(--muted);font-weight:900;">
               Score: ${r.score}/${r.total} • ${new Date(r.when).toLocaleString()}
             </div>
           </div>
-        `).join("") : `<div style="font-weight:900;color:var(--muted);">No results yet.</div>`}
+        `).join("") : `<div style="font-weight:1000;color:var(--muted);">No results yet.</div>`}
       </div>
       <div class="aiTiny" style="margin-top:10px;">
-        Важно: результаты сохраняются в браузере на этом компьютере/телефоне (localStorage).
+        *Results are stored in this browser (localStorage).
       </div>
     `;
   }
 
-  // AI Bayan Dock
-  function renderAIDock(session){
-    // показываем чат всем, но лимит 1 вопрос/день — на устройстве
-    const welcome = window.APP_DATA.aiBayan.welcome;
-    const quick = window.APP_DATA.aiBayan.quick;
-
+  // AI Bayan Dock (1 вопрос/день, локальные ответы)
+  function renderAIDock(){
     const existing = document.querySelector(".aiDock");
     if (existing) existing.remove();
+
+    const welcome = window.APP_DATA.aiBayan.welcome;
+    const quick = window.APP_DATA.aiBayan.quick;
 
     const dock = document.createElement("div");
     dock.className = "aiDock";
@@ -448,25 +467,29 @@
     setTiny();
 
     const answerLocal = (q) => {
-      // безопасный “мини-бот”: объяснения без внешнего API
       const ql = q.toLowerCase();
       if (ql.includes("present simple")) {
-        return "Present Simple: привычки/факты. Формула: I/you/we/they + V1; he/she/it + V1+s. Neg: don't/doesn't + V1. Q: Do/Does + S + V1?";
+        return "Present Simple: привычки/факты. I/you/we/they + V1; he/she/it + V1+s. Neg: don't/doesn't + V1. Q: Do/Does + S + V1?";
       }
       if (ql.includes("present continuous")) {
-        return "Present Continuous: действие сейчас. Формула: am/is/are + V-ing. Neg: am not/isn't/aren't + V-ing. Q: Am/Is/Are + S + V-ing?";
+        return "Present Continuous: действие сейчас. am/is/are + V-ing. Neg: am not/isn't/aren't + V-ing. Q: Am/Is/Are + S + V-ing?";
+      }
+      if (ql.includes("past simple")) {
+        return "Past Simple: действие в прошлом. V2/ed. Neg: didn't + V1. Q: Did + S + V1? Маркеры: yesterday, last..., ago.";
       }
       if (ql.includes("check")) {
-        return "Write your sentence and I will check it (grammar + correction).";
+        return "Write your sentence полностью — I will correct it (grammar + вариант лучше).";
       }
-      return "I can explain grammar rules, give examples, make questions, and check sentences. Ask clearly 😊";
+      return "I can explain rules, give examples, make questions, and check sentences 😊";
     };
 
     const send = (text) => {
-      if (!text.trim()) return;
+      const t = (text || "").trim();
+      if (!t) return;
       if (!canAskAI()) { setTiny(); return; }
+
       incAI();
-      $("#aiMsg").textContent = answerLocal(text);
+      $("#aiMsg").textContent = answerLocal(t);
       $("#aiInp").value = "";
       setTiny();
     };
