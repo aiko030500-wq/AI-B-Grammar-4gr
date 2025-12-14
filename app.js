@@ -1,7 +1,19 @@
-/* app.js — AI BAYAN GRAMMAR 4gr (fixed UI + back buttons + colors + journal list) */
+/* app.js — AI BAYAN GRAMMAR 4gr (fixed)
+   - Student PIN 2844, Teacher PIN 3244
+   - Logins: 4GL1..4GL15
+   - 15 Units + Tests
+   - Units menu like Beginner
+   - Unit header color changes per unit
+   - 5 exercises = 5 strong shades of unit color
+   - ✅/❌ + stars saved + 1 attempt saved
+   - SMS chat ONLY on main menu
+   - Teacher Journal shows 4GL1..4GL15
+*/
+
 (function () {
   const APP_TITLE = "AI BAYAN GRAMMAR 4gr";
 
+  // ---------- helpers ----------
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const esc = (s = "") =>
@@ -10,20 +22,6 @@
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;");
-
-  const LS = {
-    session: "AIBAYAN_GF4_SESSION",
-    stars: "AIBAYAN_GF4_STARS",
-    attempts: "AIBAYAN_GF4_ATTEMPTS",
-    chat: "AIBAYAN_GF4_CHAT",
-    teacher: "AIBAYAN_GF4_TEACHER",
-  };
-
-  const AUTH = {
-    studentPin: "2844",
-    teacherPin: "3244",
-    logins: Array.from({ length: 15 }, (_, i) => `4GL${i + 1}`),
-  };
 
   const todayKey = () => {
     const d = new Date();
@@ -43,47 +41,252 @@
   };
   const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  function getSession() { return loadJSON(LS.session, null); }
-  function setSession(s) { saveJSON(LS.session, s); }
-  function clearSession() { localStorage.removeItem(LS.session); }
+  // ---------- localStorage keys ----------
+  const LS = {
+    session: "AIBAYAN_GF4_SESSION",
+    stars: "AIBAYAN_GF4_STARS", // {login:{points:number}}
+    attempts: "AIBAYAN_GF4_ATTEMPTS", // {login:{key:true}}
+    results: "AIBAYAN_GF4_RESULTS", // {login:{key:{answers:{}, marks:{}, score:number}}}
+    chat: "AIBAYAN_GF4_CHAT", // {login:{YYYY-MM-DD:true}}
+    teacherLog: "AIBAYAN_GF4_TEACHER_LOG", // array
+  };
+
+  // ---------- auth ----------
+  const AUTH = {
+    studentPin: "2844",
+    teacherPin: "3244",
+    logins: Array.from({ length: 15 }, (_, i) => `4GL${i + 1}`),
+  };
+
+  function getSession() {
+    return loadJSON(LS.session, null);
+  }
+  function setSession(s) {
+    saveJSON(LS.session, s);
+  }
+  function clearSession() {
+    localStorage.removeItem(LS.session);
+  }
+
+  // ---------- data ----------
+  const FALLBACK = {
+    units: buildDefaultUnits(),
+    tests: buildDefaultTests(),
+  };
 
   function getData() {
     const d = window.APP_DATA || {};
     return {
-      units: Array.isArray(d.units) ? d.units : [],
-      tests: Array.isArray(d.tests) ? d.tests : [],
+      units: Array.isArray(d.units) && d.units.length ? d.units : FALLBACK.units,
+      tests: Array.isArray(d.tests) && d.tests.length ? d.tests : FALLBACK.tests,
     };
   }
 
+  function buildDefaultUnits() {
+    // НЕ вставляю текст книги дословно. Это короткие правила-формулы (можно заменить в data.js).
+    const topics = [
+      {
+        title: "Unit 1",
+        topic: "Present Simple vs Present Continuous",
+        ruleEn:
+          "Present Simple: habits/facts. Present Continuous: action now/temporary. PS Q: Do/Does + S + V1? PC Q: Am/Is/Are + S + V-ing?",
+        ruleRu:
+          "Present Simple: привычки/факты. Present Continuous: сейчас/временно. Вопросы: Do/Does (PS) и Am/Is/Are (PC).",
+      },
+      {
+        title: "Unit 2",
+        topic: "Past Simple (regular verbs + be)",
+        ruleEn:
+          "Past Simple: finished past actions. Regular verbs: V + -ed. Be: was/were. Neg: didn’t + V1 (be: wasn’t/weren’t). Q: Did + S + V1? (be: Was/Were + S?)",
+        ruleRu:
+          "Past Simple: завершённые действия. Правильные: V + -ed. Be: was/were. Отриц: didn’t + V1 (be: wasn’t/weren’t). Вопрос: Did + S + V1? (be: Was/Were + S?)",
+      },
+      {
+        title: "Unit 3",
+        topic: "Past Simple (irregular verbs)",
+        ruleEn:
+          "Affirmative: V2 (go→went). Neg/Q: didn’t + V1; Did + S + V1? Short: Yes, I did / No, I didn’t.",
+        ruleRu:
+          "Утв.: V2 (go→went). Отриц/вопр.: didn’t + V1; Did + S + V1? Кратко: Yes, I did / No, I didn’t.",
+      },
+      {
+        title: "Unit 4",
+        topic: "Possessive pronouns + ’s",
+        ruleEn:
+          "Possessive pronouns: mine, yours, his, hers, ours, theirs. ’s shows possession: Tom’s bag.",
+        ruleRu:
+          "Притяж. местоимения: mine, yours, his, hers, ours, theirs. ’s = принадлежность: Tom’s bag.",
+      },
+      {
+        title: "Unit 5",
+        topic: "Have to / must + Imperative",
+        ruleEn:
+          "Have to / must + V1 = obligation. Imperative: Open the door. Don’t + V1.",
+        ruleRu:
+          "Have to / must + V1 = обязанность. Imperative: Open… / Don’t + V1.",
+      },
+      {
+        title: "Unit 6",
+        topic: "Comparatives & Superlatives",
+        ruleEn:
+          "Comparative: -er / more. Superlative: the -est / the most. Irregular: good→better→best.",
+        ruleRu:
+          "Сравнит.: -er / more. Превосх.: the -est / the most. Искл.: good→better→best.",
+      },
+      {
+        title: "Unit 7",
+        topic: "Will / won’t",
+        ruleEn: "Future: will/won’t + V1. Q: Will + S + V1?",
+        ruleRu: "Будущее: will/won’t + V1. Вопрос: Will + S + V1?",
+      },
+      {
+        title: "Unit 8",
+        topic: "Much / many / some / any",
+        ruleEn:
+          "Much (uncountable), many (countable plural). Some in affirmative, any in questions/negative.",
+        ruleRu:
+          "Much (неисч.), many (исч. мн.ч.). Some в утвердит., any в вопрос/отриц.",
+      },
+      {
+        title: "Unit 9",
+        topic: "Infinitive of purpose",
+        ruleEn: "To + V1 = purpose: I went to buy хлеб.",
+        ruleRu: "To + V1 = цель: I went to buy хлеб.",
+      },
+      {
+        title: "Unit 10",
+        topic: "Present Perfect (1)",
+        ruleEn: "Have/has + V3. Q: Have/Has + S + V3?",
+        ruleRu: "Have/has + V3. Вопрос: Have/Has + S + V3?",
+      },
+      {
+        title: "Unit 11",
+        topic: "Present Perfect (2): ever / never",
+        ruleEn: "Ever (questions). Never = not at any time.",
+        ruleRu: "Ever (вопросы). Never = никогда.",
+      },
+      {
+        title: "Unit 12",
+        topic: "Should / could",
+        ruleEn: "Should = advice. Could = ability/permission.",
+        ruleRu: "Should = совет. Could = умение/возможность.",
+      },
+      {
+        title: "Unit 13",
+        topic: "Object pronouns + who/which",
+        ruleEn: "me/you/him/her/it/us/them. who (people), which (things).",
+        ruleRu: "me/you/him/her/it/us/them. who (люди), which (вещи).",
+      },
+      {
+        title: "Unit 14",
+        topic: "Past Continuous",
+        ruleEn: "was/were + V-ing (in progress in the past).",
+        ruleRu: "was/were + V-ing (действие в процессе).",
+      },
+      {
+        title: "Unit 15",
+        topic: "Past Simple vs Past Continuous",
+        ruleEn: "Past Simple = finished; Past Continuous = in progress.",
+        ruleRu: "Past Simple = завершено; Past Continuous = процесс.",
+      },
+    ];
+
+    return topics.map((t, idx) => ({
+      id: `u${idx + 1}`,
+      title: t.title,
+      topic: t.topic,
+      ruleEn: t.ruleEn,
+      ruleRu: t.ruleRu,
+      exercises: Array.from({ length: 5 }, (_, e) => ({
+        id: `ex${e + 1}`,
+        title: `Exercise ${e + 1}`,
+        items: buildDefaultItems(idx + 1, e + 1, 10),
+      })),
+    }));
+  }
+
+  function buildDefaultItems(unitNum, exNum, n) {
+    // Заглушки. Заменишь в data.js на настоящие задания.
+    const base = [
+      { q: "Write the correct form.", a: "ok" },
+      { q: "Choose the correct option.", a: "ok" },
+      { q: "Make a question.", a: "ok" },
+      { q: "Make a negative sentence.", a: "ok" },
+      { q: "Translate (RU→EN).", a: "ok" },
+    ];
+    return Array.from({ length: n }, (_, i) => ({
+      id: `i${unitNum}_${exNum}_${i + 1}`,
+      prompt: base[i % base.length].q,
+      answer: base[i % base.length].a,
+      kind: "text",
+    }));
+  }
+
+  function buildDefaultTests() {
+    return Array.from({ length: 15 }, (_, i) => ({
+      id: `t${i + 1}`,
+      title: `Test — Unit ${i + 1}`,
+      items: Array.from({ length: 10 }, (_, k) => ({
+        id: `t${i + 1}_q${k + 1}`,
+        prompt: `Unit ${i + 1}: Question ${k + 1}`,
+        answer: "ok",
+      })),
+    }));
+  }
+
+  // ---------- state ----------
   const state = {
     view: "menu", // menu | unit | tests | teacher
     unitId: "u1",
     exId: "ex1",
     testId: "t1",
     chatOpen: false,
-    teacherLogin: "4GL1",
   };
 
-  // --- stars/attempts ---
-  function getStars() { return loadJSON(LS.stars, {}); }
+  // ---------- stars / attempts / results ----------
+  function getStars() {
+    return loadJSON(LS.stars, {});
+  }
   function addStars(login, delta) {
     const s = getStars();
     if (!s[login]) s[login] = { points: 0 };
     s[login].points += delta;
     saveJSON(LS.stars, s);
   }
-  function getTotalStars(login) { return getStars()?.[login]?.points || 0; }
-
-  function getAttempts() { return loadJSON(LS.attempts, {}); }
-  function hasAttempt(login, key) { return !!getAttempts()?.[login]?.[key]; }
-  function markAttempt(login, key) {
-    const all = getAttempts();
-    if (!all[login]) all[login] = {};
-    all[login][key] = true;
-    saveJSON(LS.attempts, all);
+  function getTotalStars(login) {
+    const s = getStars();
+    return s?.[login]?.points || 0;
   }
 
-  // --- chat limit ---
+  function getAttempts() {
+    return loadJSON(LS.attempts, {});
+  }
+  function hasAttempt(login, key) {
+    const a = getAttempts();
+    return !!a?.[login]?.[key];
+  }
+  function markAttempt(login, key) {
+    const a = getAttempts();
+    if (!a[login]) a[login] = {};
+    a[login][key] = true;
+    saveJSON(LS.attempts, a);
+  }
+
+  function getResults() {
+    return loadJSON(LS.results, {});
+  }
+  function saveResult(login, key, payload) {
+    const r = getResults();
+    if (!r[login]) r[login] = {};
+    r[login][key] = payload;
+    saveJSON(LS.results, r);
+  }
+  function loadResult(login, key) {
+    const r = getResults();
+    return r?.[login]?.[key] || null;
+  }
+
+  // ---------- chat limit ----------
   function canAskToday(login) {
     const chat = loadJSON(LS.chat, {});
     const k = todayKey();
@@ -97,26 +300,65 @@
     saveJSON(LS.chat, chat);
   }
 
-  // --- themes ---
-  function getUnitTheme(i) {
+  // ---------- teacher log ----------
+  function pushTeacherLog(row) {
+    const all = loadJSON(LS.teacherLog, []);
+    all.push(row);
+    saveJSON(LS.teacherLog, all);
+  }
+
+  // ---------- themes ----------
+  // App main color: blue-gray / teal
+  const APP_BAR = "#0f7c8a";
+
+  // Unit themes base (15)
+  function getUnitBase(i) {
     const palette = [
-      "#7C4DFF", "#00BFA6", "#1E88E5", "#43A047", "#FB8C00",
-      "#E53935", "#8E24AA", "#00897B", "#3949AB", "#6D4C41",
-      "#F4511E", "#039BE5", "#5E35B1", "#2E7D32", "#C0CA33",
+      "#7C4DFF", // u1 purple
+      "#00BFA6",
+      "#1E88E5",
+      "#43A047",
+      "#FB8C00",
+      "#E53935",
+      "#8E24AA",
+      "#00897B",
+      "#3949AB",
+      "#6D4C41",
+      "#F4511E",
+      "#039BE5",
+      "#5E35B1",
+      "#2E7D32",
+      "#C0CA33",
     ];
-    const base = palette[i % palette.length];
-    const shades = makeShades(base, 5);
+    return palette[i % palette.length];
+  }
+
+  // Strong shades for Unit 1: specifically requested
+  const U1_PURPLES = ["#4B1FA6", "#B9A7FF", "#2D0B66", "#7A2EE6", "#E3D9FF"];
+
+  function getUnitTheme(unitIndex) {
+    const base = getUnitBase(unitIndex);
+
+    // Unit 1 special shades (very visible)
+    if (unitIndex === 0) {
+      return { base: base, shades: U1_PURPLES };
+    }
+    // Other units: generate 5 visible shades
+    const shades = makeStrongShades(base);
     return { base, shades };
   }
-  function makeShades(hex, n) {
+
+  function makeStrongShades(hex) {
+    // 5 noticeable shades: darker → lighter
     const rgb = hexToRgb(hex);
-    const res = [];
-    for (let i = 0; i < n; i++) {
-      const t = 0.10 + i * 0.12;
-      res.push(rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, t)));
-    }
-    return res;
+    const dark1 = rgbToHex(mix(rgb, { r: 0, g: 0, b: 0 }, 0.25));
+    const dark2 = rgbToHex(mix(rgb, { r: 0, g: 0, b: 0 }, 0.45));
+    const mid = rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, 0.15));
+    const light1 = rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, 0.30));
+    const light2 = rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, 0.45));
+    return [dark1, mid, dark2, light1, light2];
   }
+
   function hexToRgb(hex) {
     const h = hex.replace("#", "");
     const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
@@ -135,34 +377,14 @@
     return `#${h(c.r)}${h(c.g)}${h(c.b)}`;
   }
 
-  // --- more tolerant checking ---
-  function norm(x) {
-    return String(x || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[“”]/g, '"')
-      .replace(/[’]/g, "'")
-      .replace(/\s+/g, " ")
-      .replace(/[.?!]+$/g, ""); // allow missing final punctuation
-  }
-  function isAnswerCorrect(user, expected) {
-    if (expected === "ok") return norm(user).length > 0;
-    return norm(user) === norm(expected);
-  }
-
-  // --- teacher journal store ---
-  function saveTeacherResult(row) {
-    const all = loadJSON(LS.teacher, []);
-    all.push(row);
-    saveJSON(LS.teacher, all);
-  }
-
+  // ---------- mount ----------
   function mount() {
     const session = getSession();
     if (!session) return renderLogin();
     renderApp(session);
   }
 
+  // ---------- LOGIN ----------
   function renderLogin(errMsg = "") {
     $("#app").innerHTML = `
       <div class="loginPage">
@@ -171,10 +393,8 @@
             <img class="logoBig" src="logo.png" alt="logo"/>
             <div>
               <div class="appTitle">${esc(APP_TITLE)}</div>
-              <div class="appSub">Login</div>
             </div>
           </div>
-
           ${errMsg ? `<div class="loginError">${esc(errMsg)}</div>` : ""}
 
           <div class="loginForm">
@@ -191,44 +411,54 @@
     $("#loginBtn").onclick = () => {
       const login = ($("#loginInput").value || "").trim();
       const pin = ($("#pinInput").value || "").trim();
+
       if (!login || !pin) return renderLogin("Fill in Login and PIN.");
 
       if (pin === AUTH.teacherPin) {
-        setSession({ role: "teacher", login: "TEACHER" });
-        state.view = "teacher";
-        state.teacherLogin = "4GL1";
+        setSession({ role: "teacher", login: login || "TEACHER" });
         return mount();
       }
 
       const okLogin = AUTH.logins.includes(login);
       const okPin = pin === AUTH.studentPin;
       if (!okLogin || !okPin) return renderLogin("Wrong login or PIN.");
+
       setSession({ role: "student", login });
-      state.view = "menu";
       mount();
     };
   }
 
+  // ---------- APP ----------
   function renderApp(session) {
     const data = getData();
+
     const unit = data.units.find((u) => u.id === state.unitId) || data.units[0];
-    const unitIndex = Math.max(0, data.units.findIndex((u) => u.id === unit.id));
-    const ex = (unit.exercises || []).find((e) => e.id === state.exId) || unit.exercises?.[0];
+    const unitIndex = data.units.findIndex((u) => u.id === unit.id);
+    const ex = (unit.exercises || []).find((e) => e.id === state.exId) || unit.exercises[0];
+
     const test = data.tests.find((t) => t.id === state.testId) || data.tests[0];
 
     const theme = getUnitTheme(unitIndex);
-    document.documentElement.style.setProperty("--unit", theme.base);
-    document.documentElement.style.setProperty("--u1", theme.shades[0]);
-    document.documentElement.style.setProperty("--u2", theme.shades[1]);
-    document.documentElement.style.setProperty("--u3", theme.shades[2]);
-    document.documentElement.style.setProperty("--u4", theme.shades[3]);
-    document.documentElement.style.setProperty("--u5", theme.shades[4]);
+
+    // topbar color rules:
+    const barColor =
+      state.view === "unit" ? theme.base : APP_BAR;
 
     const totalStars = session.role === "student" ? getTotalStars(session.login) : 0;
 
+    // Apply CSS variables for unit
+    document.documentElement.style.setProperty("--appbar", barColor);
+    document.documentElement.style.setProperty("--unitBase", theme.base);
+    document.documentElement.style.setProperty("--shade1", theme.shades[0]);
+    document.documentElement.style.setProperty("--shade2", theme.shades[1]);
+    document.documentElement.style.setProperty("--shade3", theme.shades[2]);
+    document.documentElement.style.setProperty("--shade4", theme.shades[3]);
+    document.documentElement.style.setProperty("--shade5", theme.shades[4]);
+
     $("#app").innerHTML = `
       <div class="shell">
-        <header class="topbar">
+
+        <header class="topbar" style="background:${esc(barColor)}">
           <div class="brand">
             <img class="logo" src="logo.png" alt="logo"/>
             <div class="brandText">
@@ -264,12 +494,6 @@
                   </div>`
                 : ""
             }
-
-            ${
-              session.role === "teacher"
-                ? renderTeacherList()
-                : ""
-            }
           </aside>
 
           <main class="main">
@@ -277,38 +501,38 @@
           </main>
         </div>
 
-        <button class="smsBtn" id="smsBtn">SMS</button>
-        ${renderChatModal(session)}
+        ${
+          // SMS ONLY ON MAIN MENU
+          state.view === "menu"
+            ? `<button class="smsBtn" id="smsBtn">SMS</button>
+               ${renderChatModal(session)}`
+            : ``
+        }
+
       </div>
     `;
 
-    // Nav
+    // bind nav
     $$(".navBtn[data-view]").forEach((b) => {
       b.onclick = () => {
         state.view = b.dataset.view;
+        state.chatOpen = false;
         renderApp(session);
       };
     });
 
-    // Logout
-    $("#logoutBtn").onclick = () => { clearSession(); mount(); };
-    $("#logoutBtn2").onclick = () => { clearSession(); mount(); };
-
-    // Print
-    $("#printBtn").onclick = () => window.print();
-
-    // SMS open
-    $("#smsBtn").onclick = () => {
-      state.chatOpen = true;
-      renderApp(session);
-      setChatUI(session);
+    $("#logoutBtn").onclick = () => {
+      clearSession();
+      mount();
+    };
+    $("#logoutBtn2").onclick = () => {
+      clearSession();
+      mount();
     };
 
-    // Chat close
-    const close = $("#chatClose");
-    if (close) close.onclick = () => { state.chatOpen = false; renderApp(session); };
+    $("#printBtn").onclick = () => window.print();
 
-    // Unit tiles
+    // unit tiles click
     $$(".unitTile").forEach((t) => {
       t.onclick = () => {
         state.unitId = t.dataset.uid;
@@ -318,78 +542,88 @@
       };
     });
 
-    // Back buttons
-    const backMenu = $("#backMenuBtn");
-    if (backMenu) backMenu.onclick = () => { state.view = "menu"; renderApp(session); };
-    const backUnit = $("#backUnitBtn");
-    if (backUnit) backUnit.onclick = () => { state.view = "unit"; renderApp(session); };
-
-    // Exercise tabs
+    // exercise tabs click
     $$(".exTab").forEach((b) => {
-      b.onclick = () => { state.exId = b.dataset.exid; renderApp(session); };
+      b.onclick = () => {
+        state.exId = b.dataset.exid;
+        renderApp(session);
+      };
     });
 
-    // Test tiles
+    // test tiles click
     $$(".testTile").forEach((t) => {
-      t.onclick = () => { state.testId = t.dataset.tid; state.view = "tests"; renderApp(session); };
+      t.onclick = () => {
+        state.testId = t.dataset.tid;
+        state.view = "tests";
+        renderApp(session);
+      };
     });
 
-    // Submit
+    // back buttons in unit/tests
+    const backMenu = $("#backMenuBtn");
+    if (backMenu) {
+      backMenu.onclick = () => {
+        state.view = "menu";
+        renderApp(session);
+      };
+    }
+
+    // submit handlers
     const submitBtn = $("#submitBtn");
     if (submitBtn) {
       submitBtn.onclick = () => submitExercise(session, unit, ex);
-      setAttemptUI(session, `unit_${unit.id}_${ex.id}`, "#attemptInfo", "#submitBtn");
+      setAttemptUI(session, `unit_${unit.id}_${ex.id}`);
+      applySavedMarksIfAny(session, `unit_${unit.id}_${ex.id}`);
     }
+
     const submitTestBtn = $("#submitTestBtn");
     if (submitTestBtn) {
       submitTestBtn.onclick = () => submitTest(session, test);
-      setAttemptUI(session, `test_${test.id}`, "#attemptInfoTest", "#submitTestBtn");
+      setAttemptUI(session, `test_${test.id}`, true);
+      applySavedMarksIfAny(session, `test_${test.id}`, true);
     }
 
-    // Teacher journal table render
-    if (state.view === "teacher") renderTeacherTable();
-    // Teacher list click
-    $$(".studentPick").forEach((b) => {
-      b.onclick = () => { state.teacherLogin = b.dataset.login; renderApp(session); };
-    });
+    // SMS open (only if exists)
+    const sms = $("#smsBtn");
+    if (sms) {
+      sms.onclick = () => {
+        state.chatOpen = true;
+        renderApp(session);
+        setChatUI(session);
+      };
+    }
+    const close = $("#chatClose");
+    if (close) {
+      close.onclick = () => {
+        state.chatOpen = false;
+        renderApp(session);
+      };
+    }
+
+    if (state.view === "teacher") {
+      renderTeacherJournal();
+    }
   }
 
-  function renderTeacherList() {
-    const items = AUTH.logins
-      .map((l) => {
-        const active = l === state.teacherLogin ? "activePick" : "";
-        const stars = getTotalStars(l);
-        return `<button class="studentPick ${active}" data-login="${esc(l)}">${esc(l)} <span>⭐ ${stars}</span></button>`;
-      })
-      .join("");
-    return `
-      <div class="teacherList">
-        <div class="teacherListTitle">Students</div>
-        <div class="teacherListBox">${items}</div>
-      </div>
-    `;
-  }
-
+  // ---------- MAIN VIEWS ----------
   function renderMain(session, data, unit, ex, test, theme) {
     if (state.view === "menu") {
+      // Beginner-like tiles, WITHOUT logo inside each unit tile (as you asked)
       return `
         <div class="pageHeader">
           <div class="pageTitle">Units</div>
           <div class="pageSub">Choose a unit</div>
         </div>
 
-        <div class="tiles">
+        <div class="tiles unitsGrid">
           ${data.units
             .map((u, i) => {
               const th = getUnitTheme(i);
               return `
-                <div class="unitTile" data-uid="${esc(u.id)}" style="--tile:${th.base}">
-                  <div class="tileTop">
-                    <img class="tileLogo" src="logo.png" alt="logo"/>
-                    <div class="tileText">
-                      <div class="tileTitle">${esc(u.title)}</div>
-                      <div class="tileSub">${esc(u.topic)}</div>
-                    </div>
+                <div class="unitTile" data-uid="${esc(u.id)}" style="--tile:${esc(th.base)}">
+                  <div class="tileTextOnly">
+                    <div class="tileTitle">${esc(u.title)}</div>
+                    <div class="tileSub">${esc(u.topic)}</div>
                   </div>
                 </div>
               `;
@@ -425,7 +659,7 @@
             <div class="badge">10 items</div>
           </div>
 
-          ${renderItemsForm(test.items, `test_${test.id}`)}
+          ${renderItemsForm(session, test.items, `test_${test.id}`)}
 
           ${
             session.role === "student"
@@ -434,7 +668,8 @@
                   <button id="backMenuBtn" class="btnGhost">Back to Menu</button>
                   <div id="attemptInfoTest" class="muted"></div>
                 </div>`
-              : `<div class="muted">Teacher can view, but checking is for students.</div>`
+              : `<div class="muted">Teacher can view, but checking is for students.</div>
+                 <div class="cardActions"><button id="backMenuBtn" class="btnGhost">Back to Menu</button></div>`
           }
         </div>
       `;
@@ -442,12 +677,9 @@
 
     if (state.view === "teacher") {
       return `
-        <div class="unitHeaderBar" style="background: var(--unit)">
-          <img src="logo.png" class="unit-logo" alt="AI Bayan"/>
-          <div>
-            <div class="unit-title">Teacher Journal</div>
-            <div class="unit-sub">Selected: ${esc(state.teacherLogin)}</div>
-          </div>
+        <div class="pageHeader">
+          <div class="pageTitle">Teacher Journal</div>
+          <div class="pageSub">4GL1–4GL15 · Stars & Attempts</div>
         </div>
 
         <div class="card" id="teacherCard">
@@ -456,32 +688,34 @@
       `;
     }
 
-    // UNIT VIEW
-    const exTabs = (unit.exercises || [])
+    // ---------- UNIT VIEW ----------
+    const exTabs = unit.exercises
       .map((e, idx) => {
         const shade = theme.shades[idx] || theme.base;
         const active = e.id === ex.id ? "active" : "";
-        return `<button class="exTab ${active}" data-exid="${esc(e.id)}" style="--tab:${shade}">${esc(e.title)}</button>`;
+        return `<button class="exTab ${active}" data-exid="${esc(e.id)}" style="--tab:${esc(shade)}">${esc(
+          e.title
+        )}</button>`;
       })
       .join("");
 
+    const unitKey = `unit_${unit.id}_${ex.id}`;
+
     return `
-      <div class="unitHeaderBar" style="background: var(--unit)">
-        <img src="logo.png" class="unit-logo" alt="AI Bayan"/>
-        <div>
-          <div class="unit-title">${esc(unit.title)}</div>
-          <div class="unit-sub">${esc(unit.topic)}</div>
+      <div class="unitHeader" style="background:${esc(theme.base)}">
+        <img class="unitHeaderLogo" src="logo.png" alt="logo"/>
+        <div class="unitHeaderText">
+          <div class="unitHeaderTitle">${esc(unit.title)}</div>
+          <div class="unitHeaderSub">${esc(unit.topic)}</div>
         </div>
       </div>
 
       <div class="ruleCard">
-        <div class="ruleTop">
-          <img class="ruleLogo" src="logo.png" alt="logo"/>
-          <div>
-            <div class="ruleTitle">Grammar rule</div>
-            <div class="ruleTopic">${esc(unit.topic)}</div>
-          </div>
+        <div class="ruleTitleRow">
+          <div class="ruleTitle">Grammar rule</div>
+          <div class="badge">Unit</div>
         </div>
+
         <div class="ruleBlock">
           <div class="ruleLabel">Rule (EN)</div>
           <div class="ruleText">${esc(unit.ruleEn)}</div>
@@ -500,7 +734,7 @@
           <div class="badge">10 items</div>
         </div>
 
-        ${renderItemsForm(ex.items, `unit_${unit.id}_${ex.id}`)}
+        ${renderItemsForm(session, ex.items, unitKey)}
 
         ${
           session.role === "student"
@@ -509,19 +743,28 @@
                 <button id="backMenuBtn" class="btnGhost">Back to Menu</button>
                 <div id="attemptInfo" class="muted"></div>
               </div>`
-            : `<div class="muted">Teacher can view, but checking is for students.</div>`
+            : `<div class="muted">Teacher can view, but checking is for students.</div>
+               <div class="cardActions"><button id="backMenuBtn" class="btnGhost">Back to Menu</button></div>`
         }
       </div>
     `;
   }
 
-  function renderItemsForm(items, keyPrefix) {
+  // ---------- ITEMS FORM with SAVED marks ----------
+  function renderItemsForm(session, items, keyPrefix) {
     const list = (items || []).slice(0, 10);
+    const saved = session.role === "student" ? loadResult(session.login, keyPrefix) : null;
+    const savedAnswers = saved?.answers || {};
+    const savedMarks = saved?.marks || {};
+
     return `
       <div class="items">
         ${list
           .map((it, idx) => {
             const id = `${keyPrefix}_${it.id}`;
+            const ans = savedAnswers[it.id] ?? "";
+            const mark = savedMarks[it.id]; // "ok" | "bad" | undefined
+            const disabled = saved ? "disabled" : "";
             return `
               <div class="itemRow">
                 <div class="q">
@@ -529,8 +772,12 @@
                   <div class="qText">${esc(it.prompt)}</div>
                 </div>
                 <div class="a">
-                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" placeholder="Answer..." />
-                  <div class="mark" id="${esc(id)}_mark"></div>
+                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" value="${esc(
+                    ans
+                  )}" placeholder="Answer..." ${disabled}/>
+                  <div class="mark ${mark ? esc(mark) : ""}" id="${esc(id)}_mark">${
+                    mark === "ok" ? "✓" : mark === "bad" ? "✗" : ""
+                  }</div>
                 </div>
               </div>
             `;
@@ -540,7 +787,17 @@
     `;
   }
 
-  // ✅/❌ + stars
+  // ---------- CHECKING (✅/❌ + stars) ----------
+  function isAnswerCorrect(user, expected) {
+    if (expected === "ok") return user.trim().length > 0;
+    const norm = (x) =>
+      String(x || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+    return norm(user) === norm(expected);
+  }
+
   function submitExercise(session, unit, ex) {
     if (session.role !== "student") return;
     const key = `unit_${unit.id}_${ex.id}`;
@@ -548,11 +805,16 @@
 
     const items = (ex.items || []).slice(0, 10);
     let correct = 0;
+    const marks = {};
+    const answers = {};
 
     items.forEach((it) => {
       const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
       const user = (inp?.value || "").trim();
+      answers[it.id] = user;
+
       const ok = isAnswerCorrect(user, it.answer);
+      marks[it.id] = ok ? "ok" : "bad";
 
       const markEl = $(`#${CSS.escape(key + "_" + it.id)}_mark`);
       if (markEl) {
@@ -566,7 +828,9 @@
     addStars(session.login, correct);
     markAttempt(session.login, key);
 
-    saveTeacherResult({
+    saveResult(session.login, key, { answers, marks, score: correct });
+
+    pushTeacherLog({
       type: "exercise",
       login: session.login,
       when: new Date().toISOString(),
@@ -586,11 +850,16 @@
 
     const items = (test.items || []).slice(0, 10);
     let correct = 0;
+    const marks = {};
+    const answers = {};
 
     items.forEach((it) => {
       const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
       const user = (inp?.value || "").trim();
+      answers[it.id] = user;
+
       const ok = isAnswerCorrect(user, it.answer);
+      marks[it.id] = ok ? "ok" : "bad";
 
       const markEl = $(`#${CSS.escape(key + "_" + it.id)}_mark`);
       if (markEl) {
@@ -604,7 +873,9 @@
     addStars(session.login, correct);
     markAttempt(session.login, key);
 
-    saveTeacherResult({
+    saveResult(session.login, key, { answers, marks, score: correct });
+
+    pushTeacherLog({
       type: "test",
       login: session.login,
       when: new Date().toISOString(),
@@ -616,11 +887,13 @@
     renderApp(session);
   }
 
-  function setAttemptUI(session, key, infoSel, btnSel) {
+  function setAttemptUI(session, key, isTest = false) {
     if (session.role !== "student") return;
     const attempted = hasAttempt(session.login, key);
-    const info = $(infoSel);
-    const btn = $(btnSel);
+
+    const info = isTest ? $("#attemptInfoTest") : $("#attemptInfo");
+    const btn = isTest ? $("#submitTestBtn") : $("#submitBtn");
+
     if (attempted) {
       if (info) info.textContent = "Attempt used (1 try).";
       if (btn) btn.disabled = true;
@@ -631,35 +904,40 @@
     }
   }
 
-  // Teacher table filtered by selected login
-  function renderTeacherTable() {
+  function applySavedMarksIfAny(session, key) {
+    if (session.role !== "student") return;
+    const saved = loadResult(session.login, key);
+    if (!saved) return;
+    // renderItemsForm already fills marks + disables inputs,
+    // this is just safety if something changed.
+    setAttemptUI(session, key, key.startsWith("test_"));
+  }
+
+  // ---------- TEACHER JOURNAL ----------
+  function renderTeacherJournal() {
     const card = $("#teacherCard");
     if (!card) return;
 
-    const all = loadJSON(LS.teacher, []);
-    const selected = state.teacherLogin;
+    const stars = loadJSON(LS.stars, {});
+    const attempts = loadJSON(LS.attempts, {});
+    const log = loadJSON(LS.teacherLog, []).slice().reverse();
 
-    const filtered = all.filter((r) => r.login === selected);
-    if (!filtered.length) {
-      card.innerHTML = `<div class="muted">No results for ${esc(selected)} yet.</div>`;
-      return;
-    }
+    const rows = AUTH.logins
+      .map((login) => {
+        const s = stars?.[login]?.points || 0;
+        const aCount = Object.keys(attempts?.[login] || {}).length;
 
-    const rows = filtered
-      .slice()
-      .reverse()
-      .slice(0, 200)
-      .map((r) => {
-        const when = new Date(r.when);
-        const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
-        const title = r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
+        const last = log.find((x) => x.login === login);
+        const lastText = last
+          ? `${new Date(last.when).toLocaleDateString()} ${new Date(last.when).toLocaleTimeString()} · ${last.type} · ⭐${last.stars}`
+          : "—";
+
         return `
           <tr>
-            <td>${esc(w)}</td>
-            <td>${esc(r.type)}</td>
-            <td>${esc(title)}</td>
-            <td><b>${esc(r.score)}</b></td>
-            <td>⭐ ${esc(r.stars)}</td>
+            <td><b>${esc(login)}</b></td>
+            <td>⭐ ${esc(String(s))}</td>
+            <td>${esc(String(aCount))}</td>
+            <td>${esc(lastText)}</td>
           </tr>
         `;
       })
@@ -670,24 +948,61 @@
         <table class="t">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Type</th>
-              <th>Unit/Test</th>
-              <th>Score</th>
+              <th>Student</th>
               <th>Stars</th>
+              <th>Attempts</th>
+              <th>Last activity</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div class="mutedSmall">Saved in this browser (localStorage).</div>
+
+      <div class="mutedSmall" style="margin-top:10px;">Saved on this device (localStorage).</div>
+
+      <div style="height:14px"></div>
+
+      <div class="card" style="padding:14px;">
+        <div style="font-weight:800; margin-bottom:8px;">Latest results</div>
+        <div class="tableWrap">
+          <table class="t">
+            <thead>
+              <tr>
+                <th>Time</th><th>Login</th><th>Type</th><th>Unit/Test</th><th>Score</th><th>Stars</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                log.length
+                  ? log.slice(0, 80).map((r) => {
+                      const when = new Date(r.when);
+                      const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
+                      const title = r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
+                      return `
+                        <tr>
+                          <td>${esc(w)}</td>
+                          <td>${esc(r.login)}</td>
+                          <td>${esc(r.type)}</td>
+                          <td>${esc(title)}</td>
+                          <td><b>${esc(r.score)}</b></td>
+                          <td>⭐ ${esc(String(r.stars))}</td>
+                        </tr>
+                      `;
+                    }).join("")
+                  : `<tr><td colspan="6">No results yet.</td></tr>`
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
     `;
   }
 
-  // Chat (offline simple)
+  // ---------- CHAT (menu only) ----------
   function renderChatModal(session) {
     if (!state.chatOpen) return "";
     const locked = session.role !== "student" ? false : !canAskToday(session.login);
+
     return `
       <div class="chatOverlay">
         <div class="chatModal">
@@ -695,8 +1010,17 @@
             <div class="chatTitle">AI Bayan</div>
             <button class="chatClose" id="chatClose">✕</button>
           </div>
+
           <div class="chatBody">
             <div class="mutedSmall">1 question/day · ${esc(todayKey())}</div>
+
+            <div class="quickRow">
+              <button class="chip" data-q="Explain Present Simple (RU)">Explain Present Simple (RU)</button>
+              <button class="chip" data-q="Explain Present Continuous (RU)">Explain Present Continuous (RU)</button>
+              <button class="chip" data-q="Explain Past Simple (RU)">Explain Past Simple (RU)</button>
+              <button class="chip" data-q="Give 5 examples">Give 5 examples</button>
+              <button class="chip" data-q="Check my sentence">Check my sentence</button>
+            </div>
 
             <div class="chatLog" id="chatLog"></div>
 
@@ -710,7 +1034,7 @@
                 ? locked
                   ? `Limit reached for today. Come back tomorrow.`
                   : `You can ask 1 question today.`
-                : `Teacher mode: chat is available (no limit).`
+                : `Teacher mode: chat is available.`
             }</div>
           </div>
         </div>
@@ -719,46 +1043,89 @@
   }
 
   function setChatUI(session) {
-    const login = session.role === "student" ? session.login : "TEACHER";
-    const logKey = `log_${login}`;
+    const login = session.login || "user";
+    const logKey = `GF4_CHATLOG_${login}`;
     const history = loadJSON(logKey, []);
     const logEl = $("#chatLog");
     if (logEl) {
       logEl.innerHTML = history
-        .map((m) => `<div class="msg ${m.role}"><div class="bubble">${esc(m.text)}</div></div>`)
+        .map(
+          (m) => `
+          <div class="msg ${m.role}">
+            <div class="bubble">${esc(m.text)}</div>
+          </div>`
+        )
         .join("");
       logEl.scrollTop = logEl.scrollHeight;
     }
+
+    $$(".chip").forEach((c) => {
+      c.onclick = () => {
+        if (session.role === "student" && !canAskToday(login)) return;
+        sendChat(session, c.dataset.q || "");
+      };
+    });
 
     const sendBtn = $("#chatSend");
     const inp = $("#chatInput");
     if (sendBtn && inp) {
       sendBtn.onclick = () => sendChat(session, inp.value || "");
-      inp.onkeydown = (e) => { if (e.key === "Enter") sendBtn.click(); };
+      inp.onkeydown = (e) => {
+        if (e.key === "Enter") sendBtn.click();
+      };
     }
   }
 
   function sendChat(session, text) {
-    const login = session.role === "student" ? session.login : "TEACHER";
+    const login = session.login || "user";
     const msg = (text || "").trim();
     if (!msg) return;
 
-    if (session.role === "student" && !canAskToday(login)) return;
+    if (session.role === "student" && !canAskToday(login)) {
+      const info = $("#chatLimitInfo");
+      if (info) info.textContent = "Limit reached for today. Come back tomorrow.";
+      return;
+    }
 
-    const logKey = `log_${login}`;
+    const logKey = `GF4_CHATLOG_${login}`;
     const history = loadJSON(logKey, []);
     history.push({ role: "user", text: msg });
 
-    const reply = "Write your unit number and your sentence. I will explain with a formula + correct it.";
+    const reply = buildLocalAIReply(msg);
     history.push({ role: "ai", text: reply });
+
     saveJSON(logKey, history);
 
     if (session.role === "student") markAskedToday(login);
+
     setChatUI(session);
 
     const inp = $("#chatInput");
     if (inp) inp.value = "";
+
+    if (session.role === "student") {
+      const info = $("#chatLimitInfo");
+      if (info) info.textContent = "Limit reached for today. Come back tomorrow.";
+      if ($("#chatSend")) $("#chatSend").disabled = true;
+      if ($("#chatInput")) $("#chatInput").disabled = true;
+    }
   }
 
+  function buildLocalAIReply(q) {
+    const s = q.toLowerCase();
+    if (s.includes("present simple"))
+      return "Present Simple (RU): привычки/факты. Формула: I/You/We/They + V1; He/She/It + V1+s/es. Отриц: don’t/doesn’t + V1. Вопрос: Do/Does + S + V1?";
+    if (s.includes("present continuous"))
+      return "Present Continuous (RU): действие сейчас/временно. Формула: am/is/are + V-ing. Отриц: am not / isn’t / aren’t + V-ing. Вопрос: Am/Is/Are + S + V-ing?";
+    if (s.includes("past simple"))
+      return "Past Simple (RU): завершённое действие в прошлом. Формула: V2 или V-ed. Отриц: didn’t + V1. Вопрос: Did + S + V1?";
+    if (s.includes("examples"))
+      return "5 examples:\n1) I go to school every day.\n2) She plays tennis on Sundays.\n3) They aren’t watching TV now.\n4) We went to the park yesterday.\n5) Have you ever been to London?";
+    if (s.includes("check"))
+      return "Write your sentence here, I will correct it and explain the mistake.";
+    return "Ask about Unit 1–15 grammar. I will explain with a formula and examples.";
+  }
+
+  // ---------- init ----------
   document.addEventListener("DOMContentLoaded", mount);
 })();
