@@ -577,10 +577,13 @@
 
     if (state.view === "teacher") {
       return `
-        <div class="pageHeader">
-          <div class="pageTitle">Teacher Journal</div>
-          <div class="pageSub">Results saved on this device (localStorage)</div>
-        </div>
+  <div class="unit-header unit-${unit.color}">
+    <img src="logo.png" class="unit-logo" alt="AI Bayan">
+    <div>
+      <div class="unit-title">${esc(unit.title)}</div>
+      <div class="unit-sub">${esc(unit.topic || unit.rules?.title || "")}</div>
+    </div>
+  </div>
         <div class="card" id="teacherCard">
           <div class="muted">Loading…</div>
         </div>
@@ -599,11 +602,6 @@
       .join("");
 
     return `
-      <div class="pageHeader">
-        <div class="pageTitle">${esc(unit.title)}</div>
-        <div class="pageSub">${esc(unit.topic)}</div>
-      </div>
-
       <div class="ruleCard">
         <div class="ruleTop">
           <img class="ruleLogo" src="logo.png" alt="logo"/>
