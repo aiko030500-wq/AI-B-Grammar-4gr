@@ -1076,17 +1076,263 @@
 
   addUnit10to15();
 
-  // Tests: 15 tests × 10 (mixed) — answers real & checkable
-  const tests = Array.from({ length: 15 }, (_, i) => {
-    const n = i + 1;
-    const tItems = Array.from({ length: 10 }, (_, k) => ({
-      id: `t${n}_q${k + 1}`,
-      prompt: `Unit ${n} review: write one correct sentence (${k + 1})`,
-      answer: "ok",
-      kind: "text",
-    }));
-    return { id: `t${n}`, title: `Test — Unit ${n}`, items: tItems };
-  });
+// ===== TESTS 1–15 (10 questions each) =====
+const TESTS_1_15 = [
+  {
+    id: "t1",
+    title: "Test 1 — Unit 1 (Present Simple vs Present Continuous)",
+    items: [
+      { id: "t1q1", prompt: "He ___ (play) football every day.", answer: "plays" },
+      { id: "t1q2", prompt: "She ___ (watch) TV now.", answer: "is watching" },
+      { id: "t1q3", prompt: "They ___ (go) to school on Mondays.", answer: "go" },
+      { id: "t1q4", prompt: "I ___ (read) a book at the moment.", answer: "am reading" },
+      { id: "t1q5", prompt: "We ___ (not / like) milk.", answer: "don't like" },
+      { id: "t1q6", prompt: "He ___ (not / go) to bed late.", answer: "doesn't go" },
+      { id: "t1q7", prompt: "___ she ___ (do) her homework every day? (Do/Does)", answer: "does she do" },
+      { id: "t1q8", prompt: "___ you ___ (listen) to music now? (Are/Do)", answer: "are you listening" },
+      { id: "t1q9", prompt: "My dad ___ (work) in a bank.", answer: "works" },
+      { id: "t1q10", prompt: "Cats ___ (sleep) a lot.", answer: "sleep" },
+    ],
+  },
+
+  {
+    id: "t2",
+    title: "Test 2 — Unit 2 (Past Simple: regular + be)",
+    items: [
+      { id: "t2q1", prompt: "Yesterday I ___ (visit) my grandma.", answer: "visited" },
+      { id: "t2q2", prompt: "We ___ (watch) a film last night.", answer: "watched" },
+      { id: "t2q3", prompt: "She ___ (not / play) tennis yesterday.", answer: "didn't play" },
+      { id: "t2q4", prompt: "___ you ___ (clean) your room? (Did)", answer: "did you clean" },
+      { id: "t2q5", prompt: "He ___ (be) at home вчера. (was/were)", answer: "was" },
+      { id: "t2q6", prompt: "They ___ (be) happy yesterday.", answer: "were" },
+      { id: "t2q7", prompt: "It ___ (not / be) cold yesterday.", answer: "wasn't" },
+      { id: "t2q8", prompt: "___ she at school yesterday? (Was/Were)", answer: "was she" },
+      { id: "t2q9", prompt: "I ___ (finish) my homework an hour ago.", answer: "finished" },
+      { id: "t2q10", prompt: "We ___ (not / watch) TV last Sunday.", answer: "didn't watch" },
+    ],
+  },
+
+  {
+    id: "t3",
+    title: "Test 3 — Unit 3 (Past Simple: irregular verbs)",
+    items: [
+      { id: "t3q1", prompt: "I ___ (go) to the park yesterday.", answer: "went" },
+      { id: "t3q2", prompt: "She ___ (have) a sandwich for lunch.", answer: "had" },
+      { id: "t3q3", prompt: "They ___ (see) a dog in the street.", answer: "saw" },
+      { id: "t3q4", prompt: "We ___ (buy) a new book.", answer: "bought" },
+      { id: "t3q5", prompt: "He ___ (not / go) to school yesterday.", answer: "didn't go" },
+      { id: "t3q6", prompt: "___ you ___ (do) your homework? (Did)", answer: "did you do" },
+      { id: "t3q7", prompt: "I ___ (not / have) time last night.", answer: "didn't have" },
+      { id: "t3q8", prompt: "She ___ (make) a cake.", answer: "made" },
+      { id: "t3q9", prompt: "They ___ (take) the bus.", answer: "took" },
+      { id: "t3q10", prompt: "We ___ (not / see) him вчера.", answer: "didn't see" },
+    ],
+  },
+
+  {
+    id: "t4",
+    title: "Test 4 — Unit 4 (Possessive pronouns + 's)",
+    items: [
+      { id: "t4q1", prompt: "This is my bag. It is ___. (mine/yours)", answer: "mine" },
+      { id: "t4q2", prompt: "That is her book. It is ___.", answer: "hers" },
+      { id: "t4q3", prompt: "These are our bikes. They are ___.", answer: "ours" },
+      { id: "t4q4", prompt: "Those are their shoes. They are ___.", answer: "theirs" },
+      { id: "t4q5", prompt: "This is your pen. It is ___.", answer: "yours" },
+      { id: "t4q6", prompt: "Tom has a dog. It is ___ dog. (Tom’s)", answer: "Tom's" },
+      { id: "t4q7", prompt: "The girls have a room. It is the ___ room. (girls’)", answer: "girls'" },
+      { id: "t4q8", prompt: "My dad has a car. It is my ___ car. (dad’s)", answer: "dad's" },
+      { id: "t4q9", prompt: "This is Ali’s hat. The hat is ___. (his)", answer: "his" },
+      { id: "t4q10", prompt: "This is Sara’s dress. The dress is ___.", answer: "hers" },
+    ],
+  },
+
+  {
+    id: "t5",
+    title: "Test 5 — Unit 5 (Have to / must + Imperative)",
+    items: [
+      { id: "t5q1", prompt: "I ___ wear a uniform at school. (have to)", answer: "have to" },
+      { id: "t5q2", prompt: "He ___ do his homework. (has to)", answer: "has to" },
+      { id: "t5q3", prompt: "We ___ run in the corridor. (mustn't)", answer: "mustn't" },
+      { id: "t5q4", prompt: "You ___ be quiet in the library. (must)", answer: "must" },
+      { id: "t5q5", prompt: "Yesterday I ___ go to the doctor. (had to)", answer: "had to" },
+      { id: "t5q6", prompt: "Imperative: ___ the door, please. (open)", answer: "open" },
+      { id: "t5q7", prompt: "Negative imperative: ___ touch it!", answer: "don't" },
+      { id: "t5q8", prompt: "She ___ tidy her room every day. (has to)", answer: "has to" },
+      { id: "t5q9", prompt: "We ___ eat in class. (mustn't)", answer: "mustn't" },
+      { id: "t5q10", prompt: "You ___ listen to your teacher. (must)", answer: "must" },
+    ],
+  },
+
+  {
+    id: "t6",
+    title: "Test 6 — Unit 6 (Comparatives & Superlatives)",
+    items: [
+      { id: "t6q1", prompt: "A lion is ___ than a cat. (big)", answer: "bigger" },
+      { id: "t6q2", prompt: "This book is ___ than that one. (interesting)", answer: "more interesting" },
+      { id: "t6q3", prompt: "My bag is ___ than your bag. (heavy)", answer: "heavier" },
+      { id: "t6q4", prompt: "She is the ___ student in the class. (smart)", answer: "smartest" },
+      { id: "t6q5", prompt: "This is the ___ day of my life. (good)", answer: "best" },
+      { id: "t6q6", prompt: "Winter is ___ than summer here. (cold)", answer: "colder" },
+      { id: "t6q7", prompt: "He is the ___ runner. (fast)", answer: "fastest" },
+      { id: "t6q8", prompt: "Math is ___ than history for me. (difficult)", answer: "more difficult" },
+      { id: "t6q9", prompt: "This chair is the ___ (comfortable).", answer: "most comfortable" },
+      { id: "t6q10", prompt: "Bad → ___ → worst.", answer: "worse" },
+    ],
+  },
+
+  {
+    id: "t7",
+    title: "Test 7 — Unit 7 (will / won't)",
+    items: [
+      { id: "t7q1", prompt: "I ___ help you tomorrow. (will)", answer: "will" },
+      { id: "t7q2", prompt: "She ___ be late. (won't)", answer: "won't" },
+      { id: "t7q3", prompt: "___ you come to my party? (Will)", answer: "will" },
+      { id: "t7q4", prompt: "They ___ travel next week. (will)", answer: "will" },
+      { id: "t7q5", prompt: "He ___ forget your birthday. (won't)", answer: "won't" },
+      { id: "t7q6", prompt: "Will she ___ (call) me later?", answer: "call" },
+      { id: "t7q7", prompt: "I think it ___ rain soon.", answer: "will" },
+      { id: "t7q8", prompt: "We ___ go to the cinema tonight.", answer: "will" },
+      { id: "t7q9", prompt: "I ___ (not) eat that!", answer: "won't" },
+      { id: "t7q10", prompt: "___ they win the game?", answer: "will" },
+    ],
+  },
+
+  {
+    id: "t8",
+    title: "Test 8 — Unit 8 (much/many/some/any/a lot of)",
+    items: [
+      { id: "t8q1", prompt: "How ___ milk is there? (much/many)", answer: "much" },
+      { id: "t8q2", prompt: "How ___ apples do you want? (much/many)", answer: "many" },
+      { id: "t8q3", prompt: "I have ___ friends. (a lot of)", answer: "a lot of" },
+      { id: "t8q4", prompt: "There isn't ___ bread. (any/some)", answer: "any" },
+      { id: "t8q5", prompt: "Do you have ___ money? (any/some)", answer: "any" },
+      { id: "t8q6", prompt: "I want ___ water, please. (some/any)", answer: "some" },
+      { id: "t8q7", prompt: "We haven't got ___ eggs. (any)", answer: "any" },
+      { id: "t8q8", prompt: "There are ___ students in the class. (many/much)", answer: "many" },
+      { id: "t8q9", prompt: "I don't drink ___ coffee. (much)", answer: "much" },
+      { id: "t8q10", prompt: "We've got ___ homework today. (a lot of)", answer: "a lot of" },
+    ],
+  },
+
+  {
+    id: "t9",
+    title: "Test 9 — Unit 9 (to + infinitive: purpose)",
+    items: [
+      { id: "t9q1", prompt: "I went to the shop ___ buy bread. (to)", answer: "to" },
+      { id: "t9q2", prompt: "She studied hard ___ pass the test.", answer: "to" },
+      { id: "t9q3", prompt: "We use a pen ___ write.", answer: "to" },
+      { id: "t9q4", prompt: "He called me ___ ask a question.", answer: "to" },
+      { id: "t9q5", prompt: "They went to the park ___ play football.", answer: "to" },
+      { id: "t9q6", prompt: "I need a chair ___ sit down.", answer: "to" },
+      { id: "t9q7", prompt: "She opened the window ___ get fresh air.", answer: "to" },
+      { id: "t9q8", prompt: "He went to the library ___ read.", answer: "to" },
+      { id: "t9q9", prompt: "We turned on the TV ___ watch the news.", answer: "to" },
+      { id: "t9q10", prompt: "I’m learning English ___ speak to people.", answer: "to" },
+    ],
+  },
+
+  {
+    id: "t10",
+    title: "Test 10 — Unit 10 (Present Perfect: have/has + V3)",
+    items: [
+      { id: "t10q1", prompt: "I ___ (visit) London. (have/has)", answer: "have visited" },
+      { id: "t10q2", prompt: "She ___ (see) this film.", answer: "has seen" },
+      { id: "t10q3", prompt: "They ___ (not / finish) homework.", answer: "haven't finished" },
+      { id: "t10q4", prompt: "He ___ (not / eat) yet.", answer: "hasn't eaten" },
+      { id: "t10q5", prompt: "___ you ever ___ (be) to Astana?", answer: "have you ever been" },
+      { id: "t10q6", prompt: "___ she ___ (do) her project?", answer: "has she done" },
+      { id: "t10q7", prompt: "We ___ (make) a cake today.", answer: "have made" },
+      { id: "t10q8", prompt: "My dad ___ (buy) a new phone.", answer: "has bought" },
+      { id: "t10q9", prompt: "I ___ (not / see) him today.", answer: "haven't seen" },
+      { id: "t10q10", prompt: "They ___ (play) this game before.", answer: "have played" },
+    ],
+  },
+
+  {
+    id: "t11",
+    title: "Test 11 — Unit 11 (ever / never)",
+    items: [
+      { id: "t11q1", prompt: "Have you ___ ridden a horse? (ever/never)", answer: "ever" },
+      { id: "t11q2", prompt: "I have ___ eaten sushi. (ever/never)", answer: "never" },
+      { id: "t11q3", prompt: "Has she ___ been to the sea?", answer: "ever" },
+      { id: "t11q4", prompt: "We have ___ seen a whale.", answer: "never" },
+      { id: "t11q5", prompt: "Have they ___ tried ice skating?", answer: "ever" },
+      { id: "t11q6", prompt: "He has ___ lost his keys. (ever/never)", answer: "never" },
+      { id: "t11q7", prompt: "Have you ___ met a famous person?", answer: "ever" },
+      { id: "t11q8", prompt: "I have ___ been to Japan.", answer: "never" },
+      { id: "t11q9", prompt: "Has your friend ___ helped you?", answer: "ever" },
+      { id: "t11q10", prompt: "She has ___ lied to me.", answer: "never" },
+    ],
+  },
+
+  {
+    id: "t12",
+    title: "Test 12 — Unit 12 (should / shouldn't + could / couldn't)",
+    items: [
+      { id: "t12q1", prompt: "You ___ do your homework. (should)", answer: "should" },
+      { id: "t12q2", prompt: "You ___ eat so much sugar. (shouldn't)", answer: "shouldn't" },
+      { id: "t12q3", prompt: "I ___ swim when I was 5. (could/couldn't)", answer: "could" },
+      { id: "t12q4", prompt: "He ___ ride a bike last year. (couldn't)", answer: "couldn't" },
+      { id: "t12q5", prompt: "We ___ be polite.", answer: "should" },
+      { id: "t12q6", prompt: "She ___ stay up late. (shouldn't)", answer: "shouldn't" },
+      { id: "t12q7", prompt: "They ___ speak English when they were young. (could)", answer: "could" },
+      { id: "t12q8", prompt: "I ___ open the door — it was locked. (couldn't)", answer: "couldn't" },
+      { id: "t12q9", prompt: "You ___ drink water. (should)", answer: "should" },
+      { id: "t12q10", prompt: "You ___ shout in class. (shouldn't)", answer: "shouldn't" },
+    ],
+  },
+
+  {
+    id: "t13",
+    title: "Test 13 — Unit 13 (Object pronouns + who/which)",
+    items: [
+      { id: "t13q1", prompt: "I see Tom. I see ___. (him)", answer: "him" },
+      { id: "t13q2", prompt: "She likes Anna. She likes ___. (her)", answer: "her" },
+      { id: "t13q3", prompt: "We know the boys. We know ___. (them)", answer: "them" },
+      { id: "t13q4", prompt: "He helps me. He helps ___.", answer: "me" },
+      { id: "t13q5", prompt: "This is the girl ___ lives next door. (who/which)", answer: "who" },
+      { id: "t13q6", prompt: "This is the book ___ I like. (who/which)", answer: "which" },
+      { id: "t13q7", prompt: "I call my friends. I call ___.", answer: "them" },
+      { id: "t13q8", prompt: "They visit us. They visit ___.", answer: "us" },
+      { id: "t13q9", prompt: "That’s the dog ___ can swim. (which)", answer: "which" },
+      { id: "t13q10", prompt: "That’s the teacher ___ teaches English. (who)", answer: "who" },
+    ],
+  },
+
+  {
+    id: "t14",
+    title: "Test 14 — Unit 14 (Past Continuous + on/in)",
+    items: [
+      { id: "t14q1", prompt: "At 7 pm I ___ (do) my homework. (was/were + -ing)", answer: "was doing" },
+      { id: "t14q2", prompt: "They ___ (play) when it started to rain.", answer: "were playing" },
+      { id: "t14q3", prompt: "She ___ (not / watch) TV at 9 pm.", answer: "wasn't watching" },
+      { id: "t14q4", prompt: "___ he ___ (sleep) at 10 pm? (Was ... -ing)", answer: "was he sleeping" },
+      { id: "t14q5", prompt: "We ___ (not / listen) to music.", answer: "weren't listening" },
+      { id: "t14q6", prompt: "I was born ___ 2012. (in/on)", answer: "in" },
+      { id: "t14q7", prompt: "My birthday is ___ May. (in/on)", answer: "in" },
+      { id: "t14q8", prompt: "My birthday is ___ 10th May. (in/on)", answer: "on" },
+      { id: "t14q9", prompt: "School starts ___ Monday. (in/on)", answer: "on" },
+      { id: "t14q10", prompt: "At 6 o’clock we ___ (have) dinner.", answer: "were having" },
+    ],
+  },
+
+  {
+    id: "t15",
+    title: "Test 15 — Unit 15 (Past Simple vs Past Continuous)",
+    items: [
+      { id: "t15q1", prompt: "I ___ (walk) home when I ___ (see) my friend.", answer: "was walking when I saw" },
+      { id: "t15q2", prompt: "She ___ (do) homework at 8 pm yesterday.", answer: "was doing" },
+      { id: "t15q3", prompt: "They ___ (play) football yesterday. (Past Simple)", answer: "played" },
+      { id: "t15q4", prompt: "We ___ (watch) TV when the phone ___ (ring).", answer: "were watching when the phone rang" },
+      { id: "t15q5", prompt: "He ___ (not / go) to school yesterday.", answer: "didn't go" },
+      { id: "t15q6", prompt: "At 9 pm I ___ (sleep).", answer: "was sleeping" },
+      { id: "t15q7", prompt: "I ___ (finish) my homework, then I ___ (play).", answer: "finished then I played" },
+      { id: "t15q8", prompt: "They ___ (not / listen) when the teacher ___ (speak).", answer: "weren't listening when the teacher spoke" },
+      { id: "t15q9", prompt: "He ___ (run) when he ___ (fall).", answer: "was running when he fell" },
+      { id: "t15q10", prompt: "We ___ (go) home while it ___ (rain).", answer: "went home while it was raining" },
+    ],
+  },
+];
 
   window.APP_DATA = { units, tests };
 })();
