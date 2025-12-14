@@ -1,12 +1,13 @@
-/* app.js — AI BAYAN GRAMMAR 4gr (fixed)
+/* app.js — AI BAYAN GRAMMAR 4gr (FINAL FIX)
    - Student PIN 2844, Teacher PIN 3244
    - Logins: 4GL1..4GL15
    - 15 Units + Tests
-   - Units menu like Beginner
+   - Main menu: unit tiles разноцветные БЕЗ девочки
+   - Logo girl: ONLY Login + Main Menu header + Unit header
    - Unit header color changes per unit
-   - 5 exercises = 5 strong shades of unit color
+   - 5 exercises = 5 strong shades
    - ✅/❌ + stars saved + 1 attempt saved
-   - SMS chat ONLY on main menu
+   - SMS chat ONLY on main menu (1 question/day)
    - Teacher Journal shows 4GL1..4GL15
 */
 
@@ -44,11 +45,12 @@
   // ---------- localStorage keys ----------
   const LS = {
     session: "AIBAYAN_GF4_SESSION",
-    stars: "AIBAYAN_GF4_STARS", // {login:{points:number}}
-    attempts: "AIBAYAN_GF4_ATTEMPTS", // {login:{key:true}}
-    results: "AIBAYAN_GF4_RESULTS", // {login:{key:{answers:{}, marks:{}, score:number}}}
-    chat: "AIBAYAN_GF4_CHAT", // {login:{YYYY-MM-DD:true}}
-    teacherLog: "AIBAYAN_GF4_TEACHER_LOG", // array
+    stars: "AIBAYAN_GF4_STARS",
+    attempts: "AIBAYAN_GF4_ATTEMPTS",
+    results: "AIBAYAN_GF4_RESULTS",
+    chat: "AIBAYAN_GF4_CHAT",
+    teacherLog: "AIBAYAN_GF4_TEACHER_LOG",
+    chatlogPrefix: "GF4_CHATLOG_",
   };
 
   // ---------- auth ----------
@@ -83,112 +85,22 @@
   }
 
   function buildDefaultUnits() {
-    // НЕ вставляю текст книги дословно. Это короткие правила-формулы (можно заменить в data.js).
     const topics = [
-      {
-        title: "Unit 1",
-        topic: "Present Simple vs Present Continuous",
-        ruleEn:
-          "Present Simple: habits/facts. Present Continuous: action now/temporary. PS Q: Do/Does + S + V1? PC Q: Am/Is/Are + S + V-ing?",
-        ruleRu:
-          "Present Simple: привычки/факты. Present Continuous: сейчас/временно. Вопросы: Do/Does (PS) и Am/Is/Are (PC).",
-      },
-      {
-        title: "Unit 2",
-        topic: "Past Simple (regular verbs + be)",
-        ruleEn:
-          "Past Simple: finished past actions. Regular verbs: V + -ed. Be: was/were. Neg: didn’t + V1 (be: wasn’t/weren’t). Q: Did + S + V1? (be: Was/Were + S?)",
-        ruleRu:
-          "Past Simple: завершённые действия. Правильные: V + -ed. Be: was/were. Отриц: didn’t + V1 (be: wasn’t/weren’t). Вопрос: Did + S + V1? (be: Was/Were + S?)",
-      },
-      {
-        title: "Unit 3",
-        topic: "Past Simple (irregular verbs)",
-        ruleEn:
-          "Affirmative: V2 (go→went). Neg/Q: didn’t + V1; Did + S + V1? Short: Yes, I did / No, I didn’t.",
-        ruleRu:
-          "Утв.: V2 (go→went). Отриц/вопр.: didn’t + V1; Did + S + V1? Кратко: Yes, I did / No, I didn’t.",
-      },
-      {
-        title: "Unit 4",
-        topic: "Possessive pronouns + ’s",
-        ruleEn:
-          "Possessive pronouns: mine, yours, his, hers, ours, theirs. ’s shows possession: Tom’s bag.",
-        ruleRu:
-          "Притяж. местоимения: mine, yours, his, hers, ours, theirs. ’s = принадлежность: Tom’s bag.",
-      },
-      {
-        title: "Unit 5",
-        topic: "Have to / must + Imperative",
-        ruleEn:
-          "Have to / must + V1 = obligation. Imperative: Open the door. Don’t + V1.",
-        ruleRu:
-          "Have to / must + V1 = обязанность. Imperative: Open… / Don’t + V1.",
-      },
-      {
-        title: "Unit 6",
-        topic: "Comparatives & Superlatives",
-        ruleEn:
-          "Comparative: -er / more. Superlative: the -est / the most. Irregular: good→better→best.",
-        ruleRu:
-          "Сравнит.: -er / more. Превосх.: the -est / the most. Искл.: good→better→best.",
-      },
-      {
-        title: "Unit 7",
-        topic: "Will / won’t",
-        ruleEn: "Future: will/won’t + V1. Q: Will + S + V1?",
-        ruleRu: "Будущее: will/won’t + V1. Вопрос: Will + S + V1?",
-      },
-      {
-        title: "Unit 8",
-        topic: "Much / many / some / any",
-        ruleEn:
-          "Much (uncountable), many (countable plural). Some in affirmative, any in questions/negative.",
-        ruleRu:
-          "Much (неисч.), many (исч. мн.ч.). Some в утвердит., any в вопрос/отриц.",
-      },
-      {
-        title: "Unit 9",
-        topic: "Infinitive of purpose",
-        ruleEn: "To + V1 = purpose: I went to buy хлеб.",
-        ruleRu: "To + V1 = цель: I went to buy хлеб.",
-      },
-      {
-        title: "Unit 10",
-        topic: "Present Perfect (1)",
-        ruleEn: "Have/has + V3. Q: Have/Has + S + V3?",
-        ruleRu: "Have/has + V3. Вопрос: Have/Has + S + V3?",
-      },
-      {
-        title: "Unit 11",
-        topic: "Present Perfect (2): ever / never",
-        ruleEn: "Ever (questions). Never = not at any time.",
-        ruleRu: "Ever (вопросы). Never = никогда.",
-      },
-      {
-        title: "Unit 12",
-        topic: "Should / could",
-        ruleEn: "Should = advice. Could = ability/permission.",
-        ruleRu: "Should = совет. Could = умение/возможность.",
-      },
-      {
-        title: "Unit 13",
-        topic: "Object pronouns + who/which",
-        ruleEn: "me/you/him/her/it/us/them. who (people), which (things).",
-        ruleRu: "me/you/him/her/it/us/them. who (люди), which (вещи).",
-      },
-      {
-        title: "Unit 14",
-        topic: "Past Continuous",
-        ruleEn: "was/were + V-ing (in progress in the past).",
-        ruleRu: "was/were + V-ing (действие в процессе).",
-      },
-      {
-        title: "Unit 15",
-        topic: "Past Simple vs Past Continuous",
-        ruleEn: "Past Simple = finished; Past Continuous = in progress.",
-        ruleRu: "Past Simple = завершено; Past Continuous = процесс.",
-      },
+      { title: "Unit 1", topic: "Present Simple vs Present Continuous", ruleEn: "PS: habits/facts. PC: now/temporary. PS Q: Do/Does + S + V1? PC Q: Am/Is/Are + S + V-ing?", ruleRu: "PS: привычки/факты. PC: сейчас/временно. Вопросы: Do/Does (PS) и Am/Is/Are (PC)." },
+      { title: "Unit 2", topic: "Past Simple (regular verbs + be)", ruleEn: "Past Simple: finished past actions. Regular: V+ed. Be: was/were. Neg: didn’t + V1 (be: wasn’t/weren’t). Q: Did + S + V1? (Was/Were + S?)", ruleRu: "Past Simple: завершённые действия. V+ed. Be: was/were. Отриц: didn’t + V1 (be: wasn’t/weren’t). Вопрос: Did + S + V1? (Was/Were + S?)" },
+      { title: "Unit 3", topic: "Past Simple (irregular verbs)", ruleEn: "Affirmative: V2. Neg/Q: didn’t + V1; Did + S + V1? Short: Yes, I did / No, I didn’t.", ruleRu: "Утв.: V2. Отриц/вопр.: didn’t + V1; Did + S + V1? Кратко: Yes, I did / No, I didn’t." },
+      { title: "Unit 4", topic: "Possessive pronouns + ’s", ruleEn: "mine/yours/his/hers/ours/theirs. ’s shows possession: Tom’s bag.", ruleRu: "mine/yours/his/hers/ours/theirs. ’s = принадлежность: Tom’s bag." },
+      { title: "Unit 5", topic: "Have to / must + Imperative", ruleEn: "Have to/must + V1 = obligation. Imperative: Open… / Don’t + V1.", ruleRu: "Have to/must + V1 = обязанность. Imperative: Open… / Don’t + V1." },
+      { title: "Unit 6", topic: "Comparatives & Superlatives", ruleEn: "Comparative: -er/more. Superlative: the -est/the most. good→better→best.", ruleRu: "Сравнит.: -er/more. Превосх.: the -est/the most. good→better→best." },
+      { title: "Unit 7", topic: "Will / won’t", ruleEn: "Future: will/won’t + V1. Q: Will + S + V1?", ruleRu: "Будущее: will/won’t + V1. Вопрос: Will + S + V1?" },
+      { title: "Unit 8", topic: "Much / many / some / any", ruleEn: "Much (uncountable), many (plural). Some (affirmative), any (Q/negative).", ruleRu: "Much (неисч.), many (мн.ч.). Some (утв.), any (вопрос/отриц.)." },
+      { title: "Unit 9", topic: "Infinitive of purpose", ruleEn: "To + V1 = purpose: I went to buy…", ruleRu: "To + V1 = цель: I went to buy…" },
+      { title: "Unit 10", topic: "Present Perfect (1)", ruleEn: "Have/has + V3. Q: Have/Has + S + V3?", ruleRu: "Have/has + V3. Вопрос: Have/Has + S + V3?" },
+      { title: "Unit 11", topic: "Present Perfect (2): ever / never", ruleEn: "Ever (questions). Never = not at any time.", ruleRu: "Ever (вопросы). Never = никогда." },
+      { title: "Unit 12", topic: "Should / could", ruleEn: "Should = advice. Could = ability/permission.", ruleRu: "Should = совет. Could = умение/возможность." },
+      { title: "Unit 13", topic: "Object pronouns + who/which", ruleEn: "me/you/him/her/it/us/them. who (people), which (things).", ruleRu: "me/you/him/her/it/us/them. who (люди), which (вещи)." },
+      { title: "Unit 14", topic: "Past Continuous", ruleEn: "was/were + V-ing (in progress in the past).", ruleRu: "was/were + V-ing (действие в процессе)." },
+      { title: "Unit 15", topic: "Past Simple vs Past Continuous", ruleEn: "Past Simple = finished; Past Continuous = in progress.", ruleRu: "Past Simple = завершено; Past Continuous = процесс." },
     ];
 
     return topics.map((t, idx) => ({
@@ -206,7 +118,6 @@
   }
 
   function buildDefaultItems(unitNum, exNum, n) {
-    // Заглушки. Заменишь в data.js на настоящие задания.
     const base = [
       { q: "Write the correct form.", a: "ok" },
       { q: "Choose the correct option.", a: "ok" },
@@ -308,13 +219,11 @@
   }
 
   // ---------- themes ----------
-  // App main color: blue-gray / teal
   const APP_BAR = "#0f7c8a";
 
-  // Unit themes base (15)
   function getUnitBase(i) {
     const palette = [
-      "#7C4DFF", // u1 purple
+      "#7C4DFF",
       "#00BFA6",
       "#1E88E5",
       "#43A047",
@@ -333,23 +242,16 @@
     return palette[i % palette.length];
   }
 
-  // Strong shades for Unit 1: specifically requested
+  // Unit 1: заметные фиолетовые оттенки (как просила)
   const U1_PURPLES = ["#4B1FA6", "#B9A7FF", "#2D0B66", "#7A2EE6", "#E3D9FF"];
 
   function getUnitTheme(unitIndex) {
     const base = getUnitBase(unitIndex);
-
-    // Unit 1 special shades (very visible)
-    if (unitIndex === 0) {
-      return { base: base, shades: U1_PURPLES };
-    }
-    // Other units: generate 5 visible shades
-    const shades = makeStrongShades(base);
-    return { base, shades };
+    if (unitIndex === 0) return { base, shades: U1_PURPLES };
+    return { base, shades: makeStrongShades(base) };
   }
 
   function makeStrongShades(hex) {
-    // 5 noticeable shades: darker → lighter
     const rgb = hexToRgb(hex);
     const dark1 = rgbToHex(mix(rgb, { r: 0, g: 0, b: 0 }, 0.25));
     const dark2 = rgbToHex(mix(rgb, { r: 0, g: 0, b: 0 }, 0.45));
@@ -384,7 +286,7 @@
     renderApp(session);
   }
 
-  // ---------- LOGIN ----------
+  // ---------- LOGIN (logo big only here) ----------
   function renderLogin(errMsg = "") {
     $("#app").innerHTML = `
       <div class="loginPage">
@@ -395,6 +297,7 @@
               <div class="appTitle">${esc(APP_TITLE)}</div>
             </div>
           </div>
+
           ${errMsg ? `<div class="loginError">${esc(errMsg)}</div>` : ""}
 
           <div class="loginForm">
@@ -435,18 +338,16 @@
     const unit = data.units.find((u) => u.id === state.unitId) || data.units[0];
     const unitIndex = data.units.findIndex((u) => u.id === unit.id);
     const ex = (unit.exercises || []).find((e) => e.id === state.exId) || unit.exercises[0];
-
     const test = data.tests.find((t) => t.id === state.testId) || data.tests[0];
 
     const theme = getUnitTheme(unitIndex);
 
-    // topbar color rules:
-    const barColor =
-      state.view === "unit" ? theme.base : APP_BAR;
+    // Topbar: app color always (не повторяем девочку постоянно)
+    const barColor = APP_BAR;
 
     const totalStars = session.role === "student" ? getTotalStars(session.login) : 0;
 
-    // Apply CSS variables for unit
+    // Apply CSS variables for unit colors (buttons can use them)
     document.documentElement.style.setProperty("--appbar", barColor);
     document.documentElement.style.setProperty("--unitBase", theme.base);
     document.documentElement.style.setProperty("--shade1", theme.shades[0]);
@@ -459,12 +360,9 @@
       <div class="shell">
 
         <header class="topbar" style="background:${esc(barColor)}">
-          <div class="brand">
-            <img class="logo" src="logo.png" alt="logo"/>
-            <div class="brandText">
-              <div class="brandTitle">${esc(APP_TITLE)}</div>
-              <div class="brandSub">${esc(session.role === "teacher" ? "Teacher" : session.login)}</div>
-            </div>
+          <div class="brandTextOnly">
+            <div class="brandTitle">${esc(APP_TITLE)}</div>
+            <div class="brandSub">${esc(session.role === "teacher" ? "Teacher" : session.login)}</div>
           </div>
 
           <div class="topActions">
@@ -559,7 +457,7 @@
       };
     });
 
-    // back buttons in unit/tests
+    // back to menu
     const backMenu = $("#backMenuBtn");
     if (backMenu) {
       backMenu.onclick = () => {
@@ -573,14 +471,12 @@
     if (submitBtn) {
       submitBtn.onclick = () => submitExercise(session, unit, ex);
       setAttemptUI(session, `unit_${unit.id}_${ex.id}`);
-      applySavedMarksIfAny(session, `unit_${unit.id}_${ex.id}`);
     }
 
     const submitTestBtn = $("#submitTestBtn");
     if (submitTestBtn) {
       submitTestBtn.onclick = () => submitTest(session, test);
       setAttemptUI(session, `test_${test.id}`, true);
-      applySavedMarksIfAny(session, `test_${test.id}`, true);
     }
 
     // SMS open (only if exists)
@@ -608,11 +504,14 @@
   // ---------- MAIN VIEWS ----------
   function renderMain(session, data, unit, ex, test, theme) {
     if (state.view === "menu") {
-      // Beginner-like tiles, WITHOUT logo inside each unit tile (as you asked)
+      // logo ONLY HERE (main menu header)
       return `
-        <div class="pageHeader">
-          <div class="pageTitle">Units</div>
-          <div class="pageSub">Choose a unit</div>
+        <div class="menuHeader">
+          <img class="menuLogo" src="logo.png" alt="logo" style="width:64px;height:64px;border-radius:50%;object-fit:cover;" />
+          <div>
+            <div class="pageTitle">Units</div>
+            <div class="pageSub">Choose a unit</div>
+          </div>
         </div>
 
         <div class="tiles unitsGrid">
@@ -664,12 +563,14 @@
           ${
             session.role === "student"
               ? `<div class="cardActions">
-                  <button id="submitTestBtn" class="btnPrimary">Check</button>
-                  <button id="backMenuBtn" class="btnGhost">Back to Menu</button>
+                  <button id="submitTestBtn" class="btnPrimary" style="background:var(--unitBase);border-color:var(--unitBase);">Check</button>
+                  <button id="backMenuBtn" class="btnGhost" style="border-color:var(--unitBase);color:var(--unitBase);">Back to Menu</button>
                   <div id="attemptInfoTest" class="muted"></div>
                 </div>`
               : `<div class="muted">Teacher can view, but checking is for students.</div>
-                 <div class="cardActions"><button id="backMenuBtn" class="btnGhost">Back to Menu</button></div>`
+                 <div class="cardActions">
+                   <button id="backMenuBtn" class="btnGhost" style="border-color:var(--unitBase);color:var(--unitBase);">Back to Menu</button>
+                 </div>`
           }
         </div>
       `;
@@ -693,23 +594,25 @@
       .map((e, idx) => {
         const shade = theme.shades[idx] || theme.base;
         const active = e.id === ex.id ? "active" : "";
-        return `<button class="exTab ${active}" data-exid="${esc(e.id)}" style="--tab:${esc(shade)}">${esc(
-          e.title
-        )}</button>`;
+        return `<button class="exTab ${active}" data-exid="${esc(e.id)}"
+                 style="background:${esc(shade)}; color:#fff; border:none;">${esc(e.title)}</button>`;
       })
       .join("");
 
     const unitKey = `unit_${unit.id}_${ex.id}`;
 
     return `
+      <!-- Unit header: logo small ONLY here -->
       <div class="unitHeader" style="background:${esc(theme.base)}">
-        <img class="unitHeaderLogo" src="logo.png" alt="logo"/>
+        <img class="unitHeaderLogo" src="logo.png" alt="logo"
+             style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
         <div class="unitHeaderText">
           <div class="unitHeaderTitle">${esc(unit.title)}</div>
           <div class="unitHeaderSub">${esc(unit.topic)}</div>
         </div>
       </div>
 
+      <!-- Grammar rule WITHOUT logo -->
       <div class="ruleCard">
         <div class="ruleTitleRow">
           <div class="ruleTitle">Grammar rule</div>
@@ -739,12 +642,14 @@
         ${
           session.role === "student"
             ? `<div class="cardActions">
-                <button id="submitBtn" class="btnPrimary">Check</button>
-                <button id="backMenuBtn" class="btnGhost">Back to Menu</button>
+                <button id="submitBtn" class="btnPrimary" style="background:var(--unitBase);border-color:var(--unitBase);">Check</button>
+                <button id="backMenuBtn" class="btnGhost" style="border-color:var(--unitBase);color:var(--unitBase);">Back to Menu</button>
                 <div id="attemptInfo" class="muted"></div>
               </div>`
             : `<div class="muted">Teacher can view, but checking is for students.</div>
-               <div class="cardActions"><button id="backMenuBtn" class="btnGhost">Back to Menu</button></div>`
+               <div class="cardActions">
+                 <button id="backMenuBtn" class="btnGhost" style="border-color:var(--unitBase);color:var(--unitBase);">Back to Menu</button>
+               </div>`
         }
       </div>
     `;
@@ -756,6 +661,7 @@
     const saved = session.role === "student" ? loadResult(session.login, keyPrefix) : null;
     const savedAnswers = saved?.answers || {};
     const savedMarks = saved?.marks || {};
+    const disabled = saved ? "disabled" : "";
 
     return `
       <div class="items">
@@ -764,7 +670,6 @@
             const id = `${keyPrefix}_${it.id}`;
             const ans = savedAnswers[it.id] ?? "";
             const mark = savedMarks[it.id]; // "ok" | "bad" | undefined
-            const disabled = saved ? "disabled" : "";
             return `
               <div class="itemRow">
                 <div class="q">
@@ -772,9 +677,8 @@
                   <div class="qText">${esc(it.prompt)}</div>
                 </div>
                 <div class="a">
-                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" value="${esc(
-                    ans
-                  )}" placeholder="Answer..." ${disabled}/>
+                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}"
+                         value="${esc(ans)}" placeholder="Answer..." ${disabled}/>
                   <div class="mark ${mark ? esc(mark) : ""}" id="${esc(id)}_mark">${
                     mark === "ok" ? "✓" : mark === "bad" ? "✗" : ""
                   }</div>
@@ -827,7 +731,6 @@
 
     addStars(session.login, correct);
     markAttempt(session.login, key);
-
     saveResult(session.login, key, { answers, marks, score: correct });
 
     pushTeacherLog({
@@ -872,7 +775,6 @@
 
     addStars(session.login, correct);
     markAttempt(session.login, key);
-
     saveResult(session.login, key, { answers, marks, score: correct });
 
     pushTeacherLog({
@@ -904,15 +806,6 @@
     }
   }
 
-  function applySavedMarksIfAny(session, key) {
-    if (session.role !== "student") return;
-    const saved = loadResult(session.login, key);
-    if (!saved) return;
-    // renderItemsForm already fills marks + disables inputs,
-    // this is just safety if something changed.
-    setAttemptUI(session, key, key.startsWith("test_"));
-  }
-
   // ---------- TEACHER JOURNAL ----------
   function renderTeacherJournal() {
     const card = $("#teacherCard");
@@ -926,12 +819,10 @@
       .map((login) => {
         const s = stars?.[login]?.points || 0;
         const aCount = Object.keys(attempts?.[login] || {}).length;
-
         const last = log.find((x) => x.login === login);
         const lastText = last
           ? `${new Date(last.when).toLocaleDateString()} ${new Date(last.when).toLocaleTimeString()} · ${last.type} · ⭐${last.stars}`
           : "—";
-
         return `
           <tr>
             <td><b>${esc(login)}</b></td>
@@ -957,44 +848,7 @@
           <tbody>${rows}</tbody>
         </table>
       </div>
-
       <div class="mutedSmall" style="margin-top:10px;">Saved on this device (localStorage).</div>
-
-      <div style="height:14px"></div>
-
-      <div class="card" style="padding:14px;">
-        <div style="font-weight:800; margin-bottom:8px;">Latest results</div>
-        <div class="tableWrap">
-          <table class="t">
-            <thead>
-              <tr>
-                <th>Time</th><th>Login</th><th>Type</th><th>Unit/Test</th><th>Score</th><th>Stars</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                log.length
-                  ? log.slice(0, 80).map((r) => {
-                      const when = new Date(r.when);
-                      const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
-                      const title = r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
-                      return `
-                        <tr>
-                          <td>${esc(w)}</td>
-                          <td>${esc(r.login)}</td>
-                          <td>${esc(r.type)}</td>
-                          <td>${esc(title)}</td>
-                          <td><b>${esc(r.score)}</b></td>
-                          <td>⭐ ${esc(String(r.stars))}</td>
-                        </tr>
-                      `;
-                    }).join("")
-                  : `<tr><td colspan="6">No results yet.</td></tr>`
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
     `;
   }
 
@@ -1026,7 +880,7 @@
 
             <div class="chatInputRow">
               <input id="chatInput" class="input" placeholder="Type your question..." ${locked ? "disabled" : ""}/>
-              <button id="chatSend" class="btnPrimary" ${locked ? "disabled" : ""}>Send</button>
+              <button id="chatSend" class="btnPrimary" ${locked ? "disabled" : ""} style="background:var(--appbar);border-color:var(--appbar);">Send</button>
             </div>
 
             <div class="mutedSmall" id="chatLimitInfo">${
@@ -1044,7 +898,7 @@
 
   function setChatUI(session) {
     const login = session.login || "user";
-    const logKey = `GF4_CHATLOG_${login}`;
+    const logKey = `${LS.chatlogPrefix}${login}`;
     const history = loadJSON(logKey, []);
     const logEl = $("#chatLog");
     if (logEl) {
@@ -1087,7 +941,7 @@
       return;
     }
 
-    const logKey = `GF4_CHATLOG_${login}`;
+    const logKey = `${LS.chatlogPrefix}${login}`;
     const history = loadJSON(logKey, []);
     history.push({ role: "user", text: msg });
 
