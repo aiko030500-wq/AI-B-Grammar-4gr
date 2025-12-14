@@ -5,7 +5,6 @@ window.APP_DATA = {
     logins: Array.from({ length: 15 }, (_, i) => `4GL${i + 1}`)
   },
 
-  // Названия юнитов из Contents :contentReference[oaicite:2]{index=2}
   groups: [
     makeGroup("u1-3", "Units 1–3", [
       rule("Like + -ing; can/can’t; a/an/some; be going to", [
@@ -20,7 +19,7 @@ window.APP_DATA = {
       rule("Present simple & present continuous", [
         "PS: I/you/we/they + V1; he/she/it + V1+s/es",
         "PC: am/is/are + V-ing"
-      ], "PS — привычки/факты. PC — действие сейчас."),
+      ], "PS — привычки/факты. PC — действие сейчас/в момент речи."),
       rule("Adverbs of frequency", [
         "always / usually / often / sometimes / never",
         "S + adv + V1  (I usually play...)",
@@ -77,6 +76,19 @@ window.APP_DATA = {
     ])
   ],
 
+  testsCatalog: [
+    { id:"t1", title:"Test 1: The present simple and present continuous", itemsCount:15 },
+    { id:"t2", title:"Test 2: The past simple", itemsCount:15 },
+    { id:"t3", title:"Test 3: Possessive pronouns", itemsCount:12 },
+    { id:"t4", title:"Test 4: Will / won’t and future time expressions", itemsCount:12 },
+    { id:"t5", title:"Test 5: The present perfect with ‘ever’ and ‘never’", itemsCount:12 },
+    { id:"t6", title:"Test 6: Should / shouldn’t, could / couldn’t", itemsCount:12 },
+    { id:"t7", title:"Test 7: Object pronouns", itemsCount:12 },
+    { id:"t8", title:"Test 8: The past continuous", itemsCount:12 },
+    { id:"t9", title:"Test 9: The past simple and past continuous", itemsCount:12 },
+    { id:"t10", title:"Test 10: All grammar topics", itemsCount:20 }
+  ],
+
   aiBayan: {
     welcome: "Сәлем! I’m AI Bayan 😊 You can ask ONE question per day.",
     quick: [
@@ -89,7 +101,6 @@ window.APP_DATA = {
   }
 };
 
-// helpers
 function makeGroup(id, title, rules) {
   return {
     id,
@@ -101,18 +112,6 @@ function makeGroup(id, title, rules) {
       stubExercise("ex3", "Exercise 3"),
       stubExercise("ex4", "Exercise 4"),
       stubExercise("ex5", "Exercise 5")
-    ],
-    tests: [
-      { id:"t1", title:"Test 1: The present simple and present continuous", itemsCount:15 },
-      { id:"t2", title:"Test 2: The past simple", itemsCount:15 },
-      { id:"t3", title:"Test 3: Possessive pronouns", itemsCount:12 },
-      { id:"t4", title:"Test 4: Will / won’t and future time expressions", itemsCount:12 },
-      { id:"t5", title:"Test 5: The present perfect with ‘ever’ and ‘never’", itemsCount:12 },
-      { id:"t6", title:"Test 6: Should / shouldn’t, could / couldn’t", itemsCount:12 },
-      { id:"t7", title:"Test 7: Object pronouns", itemsCount:12 },
-      { id:"t8", title:"Test 8: The past continuous", itemsCount:12 },
-      { id:"t9", title:"Test 9: The past simple and past continuous", itemsCount:12 },
-      { id:"t10", title:"Test 10: All grammar topics", itemsCount:20 }
     ]
   };
 }
