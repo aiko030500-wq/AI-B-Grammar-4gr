@@ -1,34 +1,331 @@
+/* =========================
+   AI BAYAN GRAMMAR 4gr
+   GLOBAL THEME
+========================= */
+
 :root{
-  /* Global teal-blue theme */
-  --bg1:#0b8a8f;
-  --bg2:#0a5aa3;
-  --panel:#ffffff;
-  --paper:#f1f7f8;
-  --nav:#0f5fa6;
-  --nav-dark:#0b4b84;
+  --bg-main: #eaf4f6;
+  --panel: #ffffff;
+  --paper: #f7fbfc;
 
-  /* Unit theme (changes per unit in JS) */
-  --unit:#0f5fa6;
-  --unit-soft:#e8f2fb;
+  --nav: #0f7c8a;
+  --nav-dark: #0a5c66;
 
-  --shadow: 0 10px 22px rgba(0,0,0,.14);
-  --radius:16px;
-  --text:#0e1720;
-  --muted:#61707f;
-  --ok:#16a34a;
-  --bad:#dc2626;
+  /* меняется динамически под юнит */
+  --unit: #0f7c8a;
+  --unit-soft: rgba(15,124,138,.12);
 
-  --btn:#0f5fa6;
-  --btn-dark:#0b4b84;
+  --text: #0e1e25;
+  --muted: #5f7a83;
+
+  --ok: #22c55e;
+  --bad: #ef4444;
+
+  --radius: 16px;
+  --shadow: 0 12px 26px rgba(0,0,0,.12);
 }
 
-*{ box-sizing:border-box; }
+*{
+  box-sizing: border-box;
+}
+
 body{
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color:var(--text);
-  min-height:100vh;
+  background: linear-gradient(135deg, #e6f3f6, #eaf4f6);
+  color: var(--text);
+}
 
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,255,255,.18) 0 18%, transparent 19% 100%),
-    radial-gradient(circle at 65% 35%, rgba(255,255,255,.12)
+/* =========================
+   LAYOUT
+========================= */
+
+.shell{
+  max-width: 1200px;
+  margin: 18px auto;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 18px;
+  padding: 0 14px;
+}
+
+/* =========================
+   SIDEBAR (UNITS)
+========================= */
+
+.sidebar{
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.logo img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+}
+
+.logoTitle{
+  font-weight:900;
+  font-size:15px;
+  line-height:1.1;
+}
+
+.sidebtn{
+  width:100%;
+  border:0;
+  border-radius:12px;
+  padding:10px 12px;
+  margin-bottom:8px;
+  background:#eef5f7;
+  color:#12424b;
+  font-weight:800;
+  cursor:pointer;
+  transition:.2s;
+  text-align:left;
+}
+
+.sidebtn:hover{
+  background:#e2f0f4;
+}
+
+.sidebtn.active{
+  background: var(--unit);
+  color:#fff;
+}
+
+/* =========================
+   MAIN PANEL
+========================= */
+
+.main{
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow:hidden;
+}
+
+.header{
+  background: linear-gradient(135deg, var(--nav), var(--nav-dark));
+  color:#fff;
+  padding:14px 18px;
+  font-weight:900;
+  letter-spacing:.4px;
+}
+
+.content{
+  background: var(--unit-soft);
+  padding:20px;
+  min-height:600px;
+}
+
+/* =========================
+   RULES
+========================= */
+
+.ruleBox{
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:14px;
+  border-left:6px solid var(--unit);
+  box-shadow: 0 10px 20px rgba(0,0,0,.08);
+}
+
+.ruleTitle{
+  font-weight:900;
+  margin-bottom:6px;
+}
+
+.ruleFormula{
+  font-family: monospace;
+  background:#f2f6f7;
+  padding:6px 10px;
+  border-radius:8px;
+  margin-bottom:6px;
+}
+
+.ruleRu{
+  color:var(--muted);
+  font-size:14px;
+}
+
+/* =========================
+   EXERCISES
+========================= */
+
+.tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+
+.tab{
+  padding:8px 14px;
+  border-radius:10px;
+  background:#eaf3f6;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.tab.active{
+  background: var(--unit);
+  color:#fff;
+}
+
+.card{
+  background:#fff;
+  border-radius:16px;
+  padding:18px;
+  box-shadow: 0 10px 22px rgba(0,0,0,.10);
+  border:2px solid rgba(0,0,0,.05);
+}
+
+/* =========================
+   QUESTIONS
+========================= */
+
+.q{
+  background: rgba(255,255,255,.85);
+  border-radius:12px;
+  padding:10px 12px;
+  margin-bottom:10px;
+  display:grid;
+  grid-template-columns: auto 1fr auto;
+  gap:10px;
+  align-items:center;
+}
+
+.qnum{
+  font-weight:900;
+}
+
+.q select,
+.q input{
+  padding:6px 8px;
+  border-radius:8px;
+  border:1px solid #cfdde2;
+}
+
+.mark{
+  font-weight:900;
+  font-size:18px;
+}
+
+.mark.ok{ color:var(--ok); }
+.mark.bad{ color:var(--bad); }
+
+/* =========================
+   BUTTONS
+========================= */
+
+.btn{
+  border:0;
+  border-radius:12px;
+  padding:10px 16px;
+  background: var(--unit);
+  color:#fff;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.btn:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+.footerBtns{
+  display:flex;
+  gap:12px;
+  margin-top:14px;
+}
+
+/* =========================
+   AI BAYAN SMS
+========================= */
+
+.smsBtn{
+  position:fixed;
+  left:18px;
+  bottom:14px;
+  background: var(--unit);
+  color:#fff;
+  border:0;
+  border-radius:18px;
+  padding:12px 18px;
+  font-weight:900;
+  box-shadow: 0 14px 30px rgba(0,0,0,.22);
+  cursor:pointer;
+  z-index:1000;
+}
+
+.aiDock{
+  position:fixed;
+  left:18px;
+  bottom:70px;
+  width:300px;
+  background:#fff;
+  border-radius:18px;
+  box-shadow: var(--shadow);
+  overflow:hidden;
+  z-index:1000;
+}
+
+.aiHead{
+  background: var(--unit);
+  color:#fff;
+  padding:10px 14px;
+  font-weight:900;
+}
+
+.aiBody{
+  padding:12px;
+}
+
+.aiMsg{
+  background:#f2f6f7;
+  padding:8px;
+  border-radius:10px;
+  margin-bottom:8px;
+  font-size:14px;
+}
+
+.aiRow{
+  display:flex;
+  gap:6px;
+}
+
+.aiRow input{
+  flex:1;
+}
+
+.quickRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+
+.quick{
+  border:0;
+  background:#e6f3f6;
+  border-radius:8px;
+  padding:6px 8px;
+  font-size:12px;
+  cursor:pointer;
+}
+
+.aiTiny{
+  margin-top:6px;
+  font-size:11px;
+  color:var(--muted);
+}
