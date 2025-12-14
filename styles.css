@@ -211,3 +211,33 @@ body { background: linear-gradient(135deg,#e7f5f7,#f2fbfc); min-height: 100vh; }
     pointer-events:none;
   }
 }
+
+/* ===== LOGIN IMAGE (BIG ONLY ON LOGIN) ===== */
+.login-hero img{
+  width: 260px;
+  max-width: 80%;
+  height: auto;
+  display: block;
+  margin: 0 auto 20px;
+}
+
+/* ===== UNIT HEADER LOGO (SMALL) ===== */
+.unit-header img,
+.unit-logo,
+.unitIcon{
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* ===== BLOCK HUGE IMAGES INSIDE UNITS ===== */
+.main img{
+  max-width: 100%;
+  height: auto;
+}
+
+/* ===== REMOVE IMAGE FROM GRAMMAR CARD ===== */
+.ruleTop img{
+  display: none !important;
+}
