@@ -1,789 +1,1032 @@
-/* =========================
-   AI BAYAN GRAMMAR 4gr
-   app.js (FULL FIXED)
-========================= */
+/* app.js — AI BAYAN GRAMMAR 4gr
+   - Login: Student PIN 2844, Teacher PIN 3244
+   - Logins: 4GL1..4GL15
+   - 15 Units (tiles like Beginner menu)
+   - Each unit has its own color + 5 shades for Exercise 1..5
+   - Check (✅) / X (❌) feedback, stars saved (localStorage)
+   - AI Bayan: SMS button opens chat modal, 1 question/day
+   - Print with watermark
+*/
 
-const LS = {
-  session: "aibayan4_session",
-  attempts: "aibayan4_attempts",
-  stars: "aibayan4_stars",
-  aiDaily: "aibayan4_aiDaily"
-};
+(function () {
+  const APP_TITLE = "AI BAYAN GRAMMAR 4gr";
 
-const $ = (sel, root=document) => root.querySelector(sel);
+  // ---------- helpers ----------
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const esc = (s = "") =>
+    String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
 
-const state = {
-  view: "units",      // units | unit | tests | testRun | journal
-  unitId: null,
-  exId: null,
-  testId: null,
-  lastScore: null
-};
+  const LS = {
+    session: "AIBAYAN_GF4_SESSION",
+    stars: "AIBAYAN_GF4_STARS",
+    attempts: "AIBAYAN_GF4_ATTEMPTS",
+    chat: "AIBAYAN_GF4_CHAT",
+    teacher: "AIBAYAN_GF4_TEACHER",
+  };
 
-function readJSON(key, fallback){
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function writeJSON(key, value){
-  localStorage.setItem(key, JSON.stringify(value));
-}
+  const todayKey = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
 
-function todayKey(){
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const day = String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${day}`;
-}
-
-function canAskAI(){
-  const obj = readJSON(LS.aiDaily, {});
-  return obj[todayKey()] !== true;
-}
-function incAI(){
-  const obj = readJSON(LS.aiDaily, {});
-  obj[todayKey()] = true;
-  writeJSON(LS.aiDaily, obj);
-}
-
-function getAttempts(){ return readJSON(LS.attempts, {}); }
-function setAttempts(x){ writeJSON(LS.attempts, x); }
-
-function getStars(){ return readJSON(LS.stars, {}); }
-function setStars(x){ writeJSON(LS.stars, x); }
-
-function keyExercise(session, unitId, exId){
-  return `ex:${session.role}:${session.login}:${unitId}:${exId}`;
-}
-function keyUnitStars(session, unitId){
-  return `unitStars:${session.role}:${session.login}:${unitId}`;
-}
-function testKey(session, testId){
-  return `test:${session.role}:${session.login}:${testId}`;
-}
-
-/* =========================
-   COLOR THEME
-========================= */
-function hexToRgb(hex){
-  const h = (hex || "#0f7c8a").replace("#","").trim();
-  const full = h.length===3 ? h.split("").map(x=>x+x).join("") : h;
-  const n = parseInt(full, 16);
-  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
-}
-function makeSoft(hex, alpha=0.14){
-  const {r,g,b} = hexToRgb(hex);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-function applyUnitTheme(hex){
-  const c = hex || "#0f7c8a";
-  document.documentElement.style.setProperty("--unit", c);
-  document.documentElement.style.setProperty("--unit-soft", makeSoft(c, 0.12));
-}
-
-/* =========================
-   BOOT
-========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  ensureData();
-  const session = readJSON(LS.session, null);
-  if (session) renderApp(session);
-  else renderLogin();
-});
-
-function ensureData(){
-  if (!window.APP_DATA) {
-    console.error("APP_DATA not found. Check data.js!");
-  }
-}
-
-/* =========================
-   LOGIN
-========================= */
-function renderLogin(){
-  applyUnitTheme("#0f7c8a");
-
-  const root = $("#app") || document.body;
-  root.innerHTML = `
-    <div style="max-width:980px;margin:22px auto;padding:0 14px;">
-      <div style="background:#fff;border-radius:16px;box-shadow:0 12px 26px rgba(0,0,0,.12);overflow:hidden;">
-        <div style="background:linear-gradient(135deg,#0f7c8a,#0a5c66);color:#fff;padding:16px 18px;font-weight:900;">
-          AI BAYAN GRAMMAR 4gr
-        </div>
-        <div style="padding:18px;">
-          <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px;">
-            <img src="logo.png" alt="logo" style="width:54px;height:54px;border-radius:50%;object-fit:cover;">
-            <div>
-              <div style="font-weight:900;font-size:18px;">Login</div>
-              <div style="color:#5f7a83;font-size:13px;">(no hints)</div>
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-              <div style="font-weight:800;margin-bottom:6px;">Login</div>
-              <input id="loginName" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #cfdde2;">
-            </div>
-            <div>
-              <div style="font-weight:800;margin-bottom:6px;">PIN</div>
-              <input id="loginPin" type="password" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #cfdde2;">
-            </div>
-          </div>
-
-          <div id="loginErr" style="margin-top:10px;color:#ef4444;font-weight:800;"></div>
-
-          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn" id="btnEnter">Enter</button>
-            <button class="btn" id="btnReset" style="background:#123c45;">Reset saved data</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  $("#btnEnter").onclick = () => {
-    const login = ($("#loginName").value || "").trim();
-    const pin = ($("#loginPin").value || "").trim();
-    const ok = auth(login, pin);
-    if (!ok.ok){
-      $("#loginErr").textContent = ok.msg;
-      return;
+  const loadJSON = (k, fallback) => {
+    try {
+      const v = localStorage.getItem(k);
+      return v ? JSON.parse(v) : fallback;
+    } catch {
+      return fallback;
     }
-    writeJSON(LS.session, ok.session);
-    renderApp(ok.session);
+  };
+  const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  // ---------- auth ----------
+  const AUTH = {
+    studentPin: "2844",
+    teacherPin: "3244",
+    logins: Array.from({ length: 15 }, (_, i) => `4GL${i + 1}`),
   };
 
-  $("#btnReset").onclick = () => {
+  function getSession() {
+    return loadJSON(LS.session, null);
+  }
+  function setSession(session) {
+    saveJSON(LS.session, session);
+  }
+  function clearSession() {
     localStorage.removeItem(LS.session);
-    localStorage.removeItem(LS.attempts);
-    localStorage.removeItem(LS.stars);
-    localStorage.removeItem(LS.aiDaily);
-    $("#loginErr").textContent = "Saved data cleared.";
-  };
-}
-
-function auth(login, pin){
-  const a = window.APP_DATA?.auth;
-  if (!a) return { ok:false, msg:"APP_DATA.auth missing." };
-
-  // teacher
-  if (pin === a.teacherPin) {
-    return { ok:true, session:{ role:"teacher", login: login || "TEACHER" } };
   }
 
-  // student
-  const validLogin = a.logins.includes(login);
-  if (!validLogin) return { ok:false, msg:"Wrong login." };
-  if (pin !== a.studentPin) return { ok:false, msg:"Wrong PIN." };
-  return { ok:true, session:{ role:"student", login } };
-}
+  // ---------- DATA (fallback if data.js missing) ----------
+  // IMPORTANT: You can replace/extend content in data.js as window.APP_DATA
+  const FALLBACK = {
+    units: buildDefaultUnits(),
+    tests: buildDefaultTests(),
+  };
 
-/* =========================
-   APP SHELL
-========================= */
-function renderApp(session){
-  const root = $("#app") || document.body;
-
-  const groups = window.APP_DATA.groups || [];
-  const currentUnit = groups.find(g => g.id === state.unitId) || groups[0];
-
-  // apply theme color
-  if (state.view === "unit" && currentUnit) applyUnitTheme(currentUnit.color);
-  else applyUnitTheme("#0f7c8a");
-
-  root.innerHTML = `
-    <div class="shell">
-      <div class="sidebar">
-        <div class="logo">
-          <img src="logo.png" alt="logo">
-          <div>
-            <div class="logoTitle">AI BAYAN</div>
-            <div style="font-size:12px;color:var(--muted);font-weight:800;">${session.login}</div>
-          </div>
-        </div>
-
-        <button class="sidebtn ${state.view==="units" ? "active":""}" data-go="units">Units</button>
-        <button class="sidebtn ${state.view==="tests" ? "active":""}" data-go="tests">Tests</button>
-        ${session.role==="teacher" ? `<button class="sidebtn ${state.view==="journal" ? "active":""}" data-go="journal">Teacher Journal</button>` : ``}
-        <button class="sidebtn" id="btnLogout">Logout</button>
-
-        <div style="margin-top:14px;padding-top:12px;border-top:1px dashed rgba(0,0,0,.12);">
-          <div style="font-weight:900;margin-bottom:6px;">Progress</div>
-          <div style="font-size:13px;color:var(--muted);font-weight:800;" id="progBox"></div>
-        </div>
-      </div>
-
-      <div class="main">
-        <div class="header">AI BAYAN GRAMMAR 4gr</div>
-        <div class="content" id="content"></div>
-      </div>
-    </div>
-  `;
-
-  // sidebar routing
-  document.querySelectorAll("[data-go]").forEach(btn=>{
-    btn.onclick = () => {
-      state.view = btn.dataset.go;
-      state.lastScore = null;
-      renderApp(session);
+  function getData() {
+    const d = window.APP_DATA || {};
+    return {
+      units: Array.isArray(d.units) && d.units.length ? d.units : FALLBACK.units,
+      tests: Array.isArray(d.tests) && d.tests.length ? d.tests : FALLBACK.tests,
     };
-  });
+  }
 
-  $("#btnLogout").onclick = () => {
-    localStorage.removeItem(LS.session);
-    state.view = "units";
-    state.unitId = null;
-    state.exId = null;
-    state.testId = null;
-    renderLogin();
+  // Topics aligned with Grammar Friends 4 contents (paraphrased rules) :contentReference[oaicite:1]{index=1}
+  function buildDefaultUnits() {
+    const topics = [
+      {
+        title: "Unit 1",
+        topic: "Present Simple vs Present Continuous + Adverbs of frequency",
+        ruleEn:
+          "Present Simple: habits/facts. Form: I/You/We/They + V1; He/She/It + V1+s/es. Neg: don’t/doesn’t + V1. Q: Do/Does + S + V1?",
+        ruleRu:
+          "Present Simple: привычки/факты. I/You/We/They + V1; He/She/It + V1+s/es. Отрицание: don’t/doesn’t + V1. Вопрос: Do/Does + подл. + V1?",
+      },
+      {
+        title: "Unit 2",
+        topic: "Past Simple (be/have + regular verbs) + Past time expressions",
+        ruleEn:
+          "Past Simple: finished actions. Regular verbs: V + -ed. Be: was/were. Neg: didn’t + V1 (be: wasn’t/weren’t). Q: Did + S + V1? (be: Was/Were + S?).",
+        ruleRu:
+          "Past Simple: завершённые действия. Правильные: V + -ed. Be: was/were. Отрицание: didn’t + V1 (be: wasn’t/weren’t). Вопрос: Did + подл. + V1? (be: Was/Were + подл.?).",
+      },
+      {
+        title: "Unit 3",
+        topic: "Past Simple (irregular verbs) + questions/short answers",
+        ruleEn:
+          "Irregular verbs: V2 in affirmative (go→went). Neg/Q: didn’t + V1; Did + S + V1? Short: Yes, I did / No, I didn’t.",
+        ruleRu:
+          "Неправильные глаголы: V2 в утвердительном (go→went). Отриц/вопрос: didn’t + V1; Did + подл. + V1? Кратко: Yes, I did / No, I didn’t.",
+      },
+      {
+        title: "Unit 4",
+        topic: "Possessive pronouns + Adverbs",
+        ruleEn:
+          "Possessive pronouns replace a noun: mine, yours, his, hers, ours, theirs. (This is my bag → This is mine.) Adverbs often end -ly (quick→quickly).",
+        ruleRu:
+          "Притяжательные местоимения заменяют существительное: mine, yours, his, hers, ours, theirs. (This is my bag → This is mine.) Наречия часто с -ly (quick→quickly).",
+      },
+      {
+        title: "Unit 5",
+        topic: "Have to + Imperative + Why/Because",
+        ruleEn:
+          "Have to + V1 = must/need. Past: had to + V1. Imperative: Turn left. Why? → Because + reason.",
+        ruleRu:
+          "Have to + V1 = нужно/должен. Прош.: had to + V1. Повелит.: Turn left. Why? → Because + причина.",
+      },
+      {
+        title: "Unit 6",
+        topic: "Comparatives & Superlatives",
+        ruleEn:
+          "Comparative: -er / more + adj (taller, more comfortable). Superlative: the -est / the most (the tallest). Irregular: good→better→best; bad→worse→worst.",
+        ruleRu:
+          "Сравнительная: -er / more (taller, more comfortable). Превосходная: the -est / the most. Искл.: good→better→best; bad→worse→worst.",
+      },
+      {
+        title: "Unit 7",
+        topic: "Will / won’t + Future time expressions",
+        ruleEn:
+          "Future: will/won’t + V1. Q: Will + S + V1? Time: tomorrow, next week, in a month’s time, soon, later.",
+        ruleRu:
+          "Будущее: will/won’t + V1. Вопрос: Will + подл. + V1? Время: tomorrow, next week, in a month’s time, soon, later.",
+      },
+      {
+        title: "Unit 8",
+        topic: "Much/Many/Lots of/A lot of + Some/Any",
+        ruleEn:
+          "Much (uncountable) / Many (countable plural) in neg/Q. Lots of / a lot of in all. Some in affirmative; any in neg/Q.",
+        ruleRu:
+          "Much (неисч.) / Many (исч. мн.ч.) в отриц/вопросах. Lots of / a lot of — везде. Some в утвердит., any в отриц/вопросах.",
+      },
+      {
+        title: "Unit 9",
+        topic: "Infinitive of purpose + How often…?",
+        ruleEn:
+          "To + V1 shows purpose: I went to the shop to buy bread. How often…? → once/twice/three times a week; every day.",
+        ruleRu:
+          "To + V1 = цель: I went… to buy… How often…? → once/twice/three times a week; every day.",
+      },
+      {
+        title: "Unit 10",
+        topic: "Present Perfect (1)",
+        ruleEn:
+          "Present Perfect: have/has + V3 for life experience/recent result. Neg: haven’t/hasn’t + V3. Q: Have/Has + S + V3?",
+        ruleRu:
+          "Present Perfect: have/has + V3 (опыт/результат). Отриц.: haven’t/hasn’t + V3. Вопрос: Have/Has + подл. + V3?",
+      },
+      {
+        title: "Unit 11",
+        topic: "Present Perfect (2): ever / never",
+        ruleEn:
+          "Ever in questions: Have you ever…? Never in affirmative meaning ‘not at any time’: I’ve never…",
+        ruleRu:
+          "Ever в вопросах: Have you ever…? Never в утвердит. со значением «никогда»: I’ve never…",
+      },
+      {
+        title: "Unit 12",
+        topic: "Should / shouldn’t + Could / couldn’t",
+        ruleEn:
+          "Should/shouldn’t + V1 = advice. Could/couldn’t + V1 = ability/permission in the past or general ability.",
+        ruleRu:
+          "Should/shouldn’t + V1 = совет. Could/couldn’t + V1 = мог/не мог (умение/возможность).",
+      },
+      {
+        title: "Unit 13",
+        topic: "Object pronouns + Relative pronouns (who/which)",
+        ruleEn:
+          "Object pronouns: me, you, him, her, it, us, them. Relative: who (people), which (things).",
+        ruleRu:
+          "Объектные местоимения: me, you, him, her, it, us, them. Относит.: who (люди), which (вещи).",
+      },
+      {
+        title: "Unit 14",
+        topic: "Past Continuous + Dates / was born + On/In",
+        ruleEn:
+          "Past Continuous: was/were + V-ing (action in progress in the past). Dates: He was born on… On + days/dates; In + months/years.",
+        ruleRu:
+          "Past Continuous: was/were + V-ing (действие в процессе). Даты: He was born on… On + дни/даты; In + месяцы/годы.",
+      },
+      {
+        title: "Unit 15",
+        topic: "Past Simple vs Past Continuous + There/They’re/Their",
+        ruleEn:
+          "Past Simple (finished) vs Past Continuous (in progress). There = ‘там/есть’; they’re = they are; their = ‘их’.",
+        ruleRu:
+          "Past Simple (закончилось) vs Past Continuous (в процессе). There = «там/есть»; they’re = they are; their = «их».",
+      },
+    ];
+
+    return topics.map((t, idx) => ({
+      id: `u${idx + 1}`,
+      title: t.title,
+      topic: t.topic,
+      ruleEn: t.ruleEn,
+      ruleRu: t.ruleRu,
+      // default 5 exercises, 10 items each
+      exercises: Array.from({ length: 5 }, (_, e) => ({
+        id: `ex${e + 1}`,
+        title: `Exercise ${e + 1}`,
+        items: buildDefaultItems(idx + 1, e + 1, 10),
+      })),
+    }));
+  }
+
+  function buildDefaultItems(unitNum, exNum, n) {
+    // Simple safe placeholders; you can replace in data.js later
+    const base = [
+      { q: "Write the correct form.", a: "ok" },
+      { q: "Choose the correct option.", a: "ok" },
+      { q: "Make a question.", a: "ok" },
+      { q: "Make a negative sentence.", a: "ok" },
+      { q: "Translate (RU→EN).", a: "ok" },
+    ];
+    return Array.from({ length: n }, (_, i) => ({
+      id: `i${unitNum}_${exNum}_${i + 1}`,
+      prompt: base[i % base.length].q,
+      answer: base[i % base.length].a,
+      kind: "text",
+    }));
+  }
+
+  function buildDefaultTests() {
+    return Array.from({ length: 15 }, (_, i) => ({
+      id: `t${i + 1}`,
+      title: `Test — Unit ${i + 1}`,
+      items: Array.from({ length: 10 }, (_, k) => ({
+        id: `t${i + 1}_q${k + 1}`,
+        prompt: `Unit ${i + 1}: Question ${k + 1}`,
+        answer: "ok",
+        kind: "text",
+      })),
+    }));
+  }
+
+  // ---------- state ----------
+  const state = {
+    view: "menu", // menu | unit | tests | teacher
+    unitId: "u1",
+    exId: "ex1",
+    testId: "t1",
+    chatOpen: false,
   };
 
-  renderProgress(session);
-  renderContent(session);
-  renderAIDock(); // SMS chat (hidden by default)
-}
-
-function renderProgress(session){
-  const stars = getStars();
-  const groups = window.APP_DATA.groups || [];
-  let total = 0;
-
-  groups.forEach(g=>{
-    const k = keyUnitStars(session, g.id);
-    total += (stars[k] || 0);
-  });
-
-  const box = $("#progBox");
-  if (box) {
-    box.textContent = `⭐ Total stars: ${total}`;
+  // ---------- stars / attempts ----------
+  function getStars() {
+    return loadJSON(LS.stars, {}); // {login: {points: number}}
   }
-}
-
-/* =========================
-   CONTENT ROUTER
-========================= */
-function renderContent(session){
-  const content = $("#content");
-  const groups = window.APP_DATA.groups || [];
-
-  if (state.view === "units"){
-    content.innerHTML = renderUnits(session);
-    wireUnits(session);
-    return;
+  function addStars(login, delta) {
+    const stars = getStars();
+    if (!stars[login]) stars[login] = { points: 0 };
+    stars[login].points += delta;
+    saveJSON(LS.stars, stars);
+  }
+  function getTotalStars(login) {
+    const stars = getStars();
+    return (stars[login]?.points || 0);
   }
 
-  if (state.view === "unit"){
-    const unit = groups.find(g=>g.id===state.unitId) || groups[0];
-    if (!unit){ state.view="units"; renderApp(session); return; }
-    applyUnitTheme(unit.color);
-    content.innerHTML = renderUnit(session, unit);
-    wireUnit(session, unit);
-    return;
+  function getAttempts() {
+    return loadJSON(LS.attempts, {}); // {login: {key: true}}
+  }
+  function markAttempt(login, key) {
+    const all = getAttempts();
+    if (!all[login]) all[login] = {};
+    all[login][key] = true;
+    saveJSON(LS.attempts, all);
+  }
+  function hasAttempt(login, key) {
+    const all = getAttempts();
+    return !!all?.[login]?.[key];
   }
 
-  if (state.view === "tests"){
-    content.innerHTML = renderTests();
-    wireTests(session);
-    return;
+  // ---------- chat limit ----------
+  function canAskToday(login) {
+    const chat = loadJSON(LS.chat, {});
+    const k = todayKey();
+    return !chat?.[login]?.[k];
+  }
+  function markAskedToday(login) {
+    const chat = loadJSON(LS.chat, {});
+    const k = todayKey();
+    if (!chat[login]) chat[login] = {};
+    chat[login][k] = true;
+    saveJSON(LS.chat, chat);
   }
 
-  if (state.view === "testRun"){
-    const t = (window.APP_DATA.tests || []).find(x=>x.id===state.testId);
-    if (!t){ state.view="tests"; renderApp(session); return; }
-    applyUnitTheme(t.color || "#0f7c8a");
-    content.innerHTML = renderTestRun(session, t);
-    wireTestRun(session, t);
-    return;
+  // ---------- rendering ----------
+  function mount() {
+    const session = getSession();
+    if (!session) return renderLogin();
+    renderApp(session);
   }
 
-  if (state.view === "journal"){
-    content.innerHTML = renderJournal(session);
-    wireJournal(session);
-    return;
-  }
-}
-
-/* =========================
-   UNITS LIST
-========================= */
-function renderUnits(session){
-  const groups = window.APP_DATA.groups || [];
-  return `
-    <div class="breadcrumb">AI BAYAN GRAMMAR 4gr • Units</div>
-    <h2 class="title">Units</h2>
-
-    <div class="card">
-      ${groups.map(g=>{
-        const stars = getStars();
-        const uStars = stars[keyUnitStars(session, g.id)] || 0;
-        return `
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px dashed rgba(0,0,0,.12);">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="width:14px;height:14px;border-radius:4px;background:${g.color};display:inline-block;"></span>
-              <div style="font-weight:1100;">${g.title}</div>
-              <div style="color:var(--muted);font-weight:900;">⭐ ${uStars}</div>
+  function renderLogin(errMsg = "") {
+    const html = `
+      <div class="loginPage">
+        <div class="loginCard">
+          <div class="loginBrand">
+            <img class="logoBig" src="logo.png" alt="logo"/>
+            <div>
+              <div class="appTitle">${esc(APP_TITLE)}</div>
+              <div class="appSub">Login</div>
             </div>
-            <button class="btn" data-unit="${g.id}">Open</button>
           </div>
-        `;
-      }).join("")}
-    </div>
-  `;
-}
 
-function wireUnits(session){
-  document.querySelectorAll("button[data-unit]").forEach(b=>{
-    b.onclick = () => {
-      state.unitId = b.dataset.unit;
-      state.exId = null;
-      state.view = "unit";
-      state.lastScore = null;
-      renderApp(session);
-    };
-  });
-}
+          ${errMsg ? `<div class="loginError">${esc(errMsg)}</div>` : ""}
 
-/* =========================
-   UNIT VIEW
-========================= */
-function renderUnit(session, unit){
-  const rulesHtml = (unit.rules || []).map(r=>`
-    <div class="ruleBox">
-      <div class="ruleTitle">${r.title}</div>
-      <div class="ruleFormula">${(r.formula || []).join(" • ")}</div>
-      <div class="ruleRu">${r.ru || ""}</div>
-    </div>
-  `).join("");
+          <div class="loginForm">
+            <label>Login</label>
+            <input id="loginInput" class="input" placeholder="4GL1" autocomplete="username" />
+            <label>PIN</label>
+            <input id="pinInput" class="input" placeholder="****" type="password" autocomplete="current-password" />
+            <button id="loginBtn" class="btnPrimary">Enter</button>
+          </div>
 
-  const exTabs = (unit.exercises || []).map((ex, i)=>`
-    <div class="tab ${(!state.exId && i===0) || state.exId===ex.id ? "active":""}" data-ex="${ex.id}">
-      ${ex.title}
-    </div>
-  `).join("");
-
-  // choose current exercise
-  const currentEx = pickExercise(unit);
-
-  return `
-    <div class="breadcrumb">Units → ${unit.title}</div>
-    <h2 class="title">${unit.title}</h2>
-
-    ${rulesHtml}
-
-    <div class="tabs">${exTabs}</div>
-
-    <div class="card">
-      ${renderExercise(session, unit, currentEx)}
-      <div class="footerBtns">
-        <button class="btn" id="btnCheckEx">Check</button>
-        <button class="btn" id="btnPrint" style="background:#123c45;">Print</button>
-        <button class="btn" id="btnBack" style="background:#123c45;">Back</button>
+          <div class="loginHint"> </div>
+        </div>
       </div>
-    </div>
-  `;
-}
+    `;
+    $("#app").innerHTML = html;
 
-function pickExercise(unit){
-  const list = unit.exercises || [];
-  if (!list.length) return null;
-  if (!state.exId) return list[0];
-  return list.find(x=>x.id===state.exId) || list[0];
-}
+    $("#loginBtn").onclick = () => {
+      const login = ($("#loginInput").value || "").trim();
+      const pin = ($("#pinInput").value || "").trim();
 
-function renderExercise(session, unit, ex){
-  if (!ex) return `<div style="font-weight:900;">No exercises.</div>`;
+      if (!login || !pin) return renderLogin("Fill in Login and PIN.");
 
-  const attempts = getAttempts();
-  const k = keyExercise(session, unit.id, ex.id);
-  const locked = attempts[k]?.done === true;
+      // teacher
+      if (pin === AUTH.teacherPin) {
+        setSession({ role: "teacher", login: login || "TEACHER" });
+        return mount();
+      }
 
-  const items = ex.items || [];
-  const body = items.map((it, idx)=>{
-    if (ex.type === "mc"){
+      // student
+      const okLogin = AUTH.logins.includes(login);
+      const okPin = pin === AUTH.studentPin;
+      if (!okLogin || !okPin) return renderLogin("Wrong login or PIN.");
+      setSession({ role: "student", login });
+      mount();
+    };
+  }
+
+  function renderApp(session) {
+    const data = getData();
+    const unit = data.units.find((u) => u.id === state.unitId) || data.units[0];
+    const unitIndex = data.units.findIndex((u) => u.id === unit.id);
+    const ex = (unit.exercises || []).find((e) => e.id === state.exId) || unit.exercises[0];
+    const test = data.tests.find((t) => t.id === state.testId) || data.tests[0];
+
+    const totalStars = session.role === "student" ? getTotalStars(session.login) : 0;
+
+    // theme colors per unit
+    const theme = getUnitTheme(unitIndex);
+    document.documentElement.style.setProperty("--unit", theme.base);
+    document.documentElement.style.setProperty("--unit2", theme.shades[1]);
+    document.documentElement.style.setProperty("--unit3", theme.shades[2]);
+    document.documentElement.style.setProperty("--unit4", theme.shades[3]);
+    document.documentElement.style.setProperty("--unit5", theme.shades[4]);
+
+    $("#app").innerHTML = `
+      <div class="shell">
+        <header class="topbar">
+          <div class="brand">
+            <img class="logo" src="logo.png" alt="logo"/>
+            <div class="brandText">
+              <div class="brandTitle">${esc(APP_TITLE)}</div>
+              <div class="brandSub">${esc(session.role === "teacher" ? "Teacher" : session.login)}</div>
+            </div>
+          </div>
+
+          <div class="topActions">
+            <button id="printBtn" class="btnGhost">Print</button>
+            <button id="logoutBtn" class="btnDanger">Logout</button>
+          </div>
+        </header>
+
+        <div class="layout">
+          <aside class="left">
+            <div class="navCard">
+              <button class="navBtn ${state.view === "menu" ? "active" : ""}" data-view="menu">Units</button>
+              <button class="navBtn ${state.view === "tests" ? "active" : ""}" data-view="tests">Tests</button>
+              ${
+                session.role === "teacher"
+                  ? `<button class="navBtn ${state.view === "teacher" ? "active" : ""}" data-view="teacher">Teacher Journal</button>`
+                  : ""
+              }
+              <button class="navBtn" id="logoutBtn2">Logout</button>
+            </div>
+
+            ${
+              session.role === "student"
+                ? `<div class="progressCard">
+                    <div class="progressTitle">Progress</div>
+                    <div class="starsLine">⭐ Total stars: <b>${totalStars}</b></div>
+                  </div>`
+                : ""
+            }
+          </aside>
+
+          <main class="main">
+            ${renderMain(session, data, unit, ex, test, theme)}
+          </main>
+        </div>
+
+        <button class="smsBtn" id="smsBtn">SMS</button>
+        ${renderChatModal(session)}
+      </div>
+    `;
+
+    // bind
+    $$(".navBtn[data-view]").forEach((b) => {
+      b.onclick = () => {
+        state.view = b.dataset.view;
+        renderApp(session);
+      };
+    });
+
+    $("#logoutBtn").onclick = () => {
+      clearSession();
+      mount();
+    };
+    $("#logoutBtn2").onclick = () => {
+      clearSession();
+      mount();
+    };
+
+    $("#printBtn").onclick = () => window.print();
+
+    // sms
+    $("#smsBtn").onclick = () => {
+      state.chatOpen = true;
+      renderApp(session);
+      setChatUI(session);
+    };
+
+    // chat close
+    const close = $("#chatClose");
+    if (close) {
+      close.onclick = () => {
+        state.chatOpen = false;
+        renderApp(session);
+      };
+    }
+
+    // unit tiles
+    $$(".unitTile").forEach((t) => {
+      t.onclick = () => {
+        state.unitId = t.dataset.uid;
+        state.exId = "ex1";
+        state.view = "unit";
+        renderApp(session);
+      };
+    });
+
+    // exercise tabs
+    $$(".exTab").forEach((b) => {
+      b.onclick = () => {
+        state.exId = b.dataset.exid;
+        renderApp(session);
+      };
+    });
+
+    // test tiles
+    $$(".testTile").forEach((t) => {
+      t.onclick = () => {
+        state.testId = t.dataset.tid;
+        state.view = "tests";
+        renderApp(session);
+      };
+    });
+
+    // submit handlers
+    const submitBtn = $("#submitBtn");
+    if (submitBtn) {
+      submitBtn.onclick = () => submitExercise(session, unit, ex);
+      setAttemptUI(session, unit, ex);
+    }
+    const submitTestBtn = $("#submitTestBtn");
+    if (submitTestBtn) {
+      submitTestBtn.onclick = () => submitTest(session, test);
+      setAttemptUI_Test(session, test);
+    }
+
+    // teacher view render table
+    if (state.view === "teacher") {
+      renderTeacher(session);
+    }
+
+    // show feedback icons style hook
+  }
+
+  function renderMain(session, data, unit, ex, test, theme) {
+    if (state.view === "menu") {
       return `
-        <div class="q">
-          <div class="qnum">${idx+1}.</div>
-          <div class="qtext">${it.text}</div>
-          <select data-q="${idx}" ${locked?"disabled":""}>
-            ${it.options.map((o,oi)=>`<option value="${oi}">${o}</option>`).join("")}
-          </select>
+        <div class="pageHeader">
+          <div class="pageTitle">Units</div>
+          <div class="pageSub">Choose a unit</div>
+        </div>
+
+        <div class="tiles">
+          ${data.units
+            .map((u, i) => {
+              const th = getUnitTheme(i);
+              return `
+                <div class="unitTile" data-uid="${esc(u.id)}" style="--tile:${th.base}">
+                  <div class="tileTop">
+                    <img class="tileLogo" src="logo.png" alt="logo"/>
+                    <div class="tileText">
+                      <div class="tileTitle">${esc(u.title)}</div>
+                      <div class="tileSub">${esc(u.topic)}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            })
+            .join("")}
         </div>
       `;
     }
-    // input
+
+    if (state.view === "tests") {
+      return `
+        <div class="pageHeader">
+          <div class="pageTitle">Tests</div>
+          <div class="pageSub">Each test: 10 questions</div>
+        </div>
+
+        <div class="tiles">
+          ${data.tests
+            .map((t) => {
+              return `
+                <div class="testTile" data-tid="${esc(t.id)}">
+                  <div class="tileTitle">${esc(t.title)}</div>
+                  <div class="tileSub">10 items</div>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+
+        <div class="card">
+          <div class="cardHeader">
+            <div class="cardTitle">${esc(test.title)}</div>
+            <div class="badge">10 items</div>
+          </div>
+
+          ${renderItemsForm(test.items, `test_${test.id}`)}
+
+          ${
+            session.role === "student"
+              ? `<div class="cardActions">
+                  <button id="submitTestBtn" class="btnPrimary">Check</button>
+                  <div id="attemptInfoTest" class="muted"></div>
+                </div>`
+              : `<div class="muted">Teacher can view, but checking is for students.</div>`
+          }
+        </div>
+      `;
+    }
+
+    if (state.view === "teacher") {
+      return `
+        <div class="pageHeader">
+          <div class="pageTitle">Teacher Journal</div>
+          <div class="pageSub">Results saved on this device (localStorage)</div>
+        </div>
+        <div class="card" id="teacherCard">
+          <div class="muted">Loading…</div>
+        </div>
+      `;
+    }
+
+    // unit view
+    const exTabs = unit.exercises
+      .map((e, idx) => {
+        const shade = theme.shades[idx] || theme.base;
+        const active = e.id === ex.id ? "active" : "";
+        return `<button class="exTab ${active}" data-exid="${esc(e.id)}" style="--tab:${shade}">${esc(
+          e.title
+        )}</button>`;
+      })
+      .join("");
+
     return `
-      <div class="q">
-        <div class="qnum">${idx+1}.</div>
-        <div class="qtext">${it.text}</div>
-        <input data-q="${idx}" ${locked?"disabled":""} />
+      <div class="pageHeader">
+        <div class="pageTitle">${esc(unit.title)}</div>
+        <div class="pageSub">${esc(unit.topic)}</div>
+      </div>
+
+      <div class="ruleCard">
+        <div class="ruleTop">
+          <img class="ruleLogo" src="logo.png" alt="logo"/>
+          <div>
+            <div class="ruleTitle">Grammar rule</div>
+            <div class="ruleTopic">${esc(unit.topic)}</div>
+          </div>
+        </div>
+        <div class="ruleBlock">
+          <div class="ruleLabel">Formula (EN)</div>
+          <div class="ruleText">${esc(unit.ruleEn)}</div>
+        </div>
+        <div class="ruleBlock">
+          <div class="ruleLabel">Объяснение (RU)</div>
+          <div class="ruleText">${esc(unit.ruleRu)}</div>
+        </div>
+      </div>
+
+      <div class="tabsRow">${exTabs}</div>
+
+      <div class="card">
+        <div class="cardHeader">
+          <div class="cardTitle">${esc(ex.title)}</div>
+          <div class="badge">10 items</div>
+        </div>
+
+        ${renderItemsForm(ex.items, `unit_${unit.id}_${ex.id}`)}
+
+        ${
+          session.role === "student"
+            ? `<div class="cardActions">
+                <button id="submitBtn" class="btnPrimary">Check</button>
+                <div id="attemptInfo" class="muted"></div>
+              </div>`
+            : `<div class="muted">Teacher can view, but checking is for students.</div>`
+        }
       </div>
     `;
-  }).join("");
+  }
 
-  const saved = attempts[k]?.score;
-  const scoreBar = locked
-    ? `<div class="scoreBar" style="margin-top:10px;font-weight:900;">Saved score: ${saved}/${items.length}</div>`
-    : (state.lastScore ? `<div class="scoreBar" style="margin-top:10px;font-weight:900;">${state.lastScore}</div>` : "");
+  function renderItemsForm(items, keyPrefix) {
+    const list = (items || []).slice(0, 10);
+    return `
+      <div class="items">
+        ${list
+          .map((it, idx) => {
+            const id = `${keyPrefix}_${it.id}`;
+            return `
+              <div class="itemRow">
+                <div class="q">
+                  <div class="qNum">${idx + 1}.</div>
+                  <div class="qText">${esc(it.prompt)}</div>
+                </div>
+                <div class="a">
+                  <input class="input ans" data-aid="${esc(it.id)}" id="${esc(id)}" placeholder="Answer..." />
+                  <div class="mark" id="${esc(id)}_mark"></div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
 
-  return `
-    <div style="font-weight:1000;margin-bottom:10px;">${ex.title} <span style="color:var(--muted);font-weight:900;">(${items.length} items)</span></div>
-    ${body}
-    ${scoreBar}
-  `;
-}
+  function renderChatModal(session) {
+    if (!state.chatOpen) return "";
+    const locked = session.role !== "student" ? false : !canAskToday(session.login);
+    return `
+      <div class="chatOverlay">
+        <div class="chatModal">
+          <div class="chatHeader">
+            <div class="chatTitle">AI Bayan</div>
+            <button class="chatClose" id="chatClose">✕</button>
+          </div>
+          <div class="chatBody">
+            <div class="mutedSmall">1 question/day · ${esc(todayKey())}</div>
 
-function wireUnit(session, unit){
-  // tabs
-  document.querySelectorAll(".tab[data-ex]").forEach(t=>{
-    t.onclick = () => {
-      state.exId = t.dataset.ex;
-      state.lastScore = null;
-      renderApp(session);
-    };
-  });
+            <div class="quickRow">
+              <button class="chip" data-q="Explain Present Simple (RU)">Explain Present Simple (RU)</button>
+              <button class="chip" data-q="Explain Present Continuous (RU)">Explain Present Continuous (RU)</button>
+              <button class="chip" data-q="Explain Past Simple (RU)">Explain Past Simple (RU)</button>
+              <button class="chip" data-q="Give 5 examples">Give 5 examples</button>
+              <button class="chip" data-q="Check my sentence">Check my sentence</button>
+            </div>
 
-  $("#btnBack").onclick = () => { state.view="units"; state.lastScore=null; renderApp(session); };
+            <div class="chatLog" id="chatLog"></div>
 
-  $("#btnPrint").onclick = () => {
-    const ex = pickExercise(unit);
-    doPrint(session, unit, ex);
-  };
+            <div class="chatInputRow">
+              <input id="chatInput" class="input" placeholder="Type your question..." ${locked ? "disabled" : ""}/>
+              <button id="chatSend" class="btnPrimary" ${locked ? "disabled" : ""}>Send</button>
+            </div>
 
-  $("#btnCheckEx").onclick = () => {
-    const ex = pickExercise(unit);
-    if (!ex) return;
+            <div class="mutedSmall" id="chatLimitInfo">${
+              session.role === "student"
+                ? locked
+                  ? `Limit reached for today. Come back tomorrow.`
+                  : `You can ask 1 question today.`
+                : `Teacher mode: chat is available (no limit).`
+            }</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
-    const attempts = getAttempts();
-    const k = keyExercise(session, unit.id, ex.id);
-    if (attempts[k]?.done) {
-      state.lastScore = "This exercise is locked (1 attempt).";
-      renderApp(session);
+  function setChatUI(session) {
+    const chat = loadJSON(LS.chat, {});
+    const login = session.login || "user";
+    const logKey = `log_${login}`;
+    const history = loadJSON(logKey, []);
+    const logEl = $("#chatLog");
+    if (logEl) {
+      logEl.innerHTML = history
+        .map(
+          (m) => `
+          <div class="msg ${m.role}">
+            <div class="bubble">${esc(m.text)}</div>
+          </div>`
+        )
+        .join("");
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    $$(".chip").forEach((c) => {
+      c.onclick = () => {
+        if (session.role === "student" && !canAskToday(login)) return;
+        sendChat(session, c.dataset.q || "");
+      };
+    });
+
+    const sendBtn = $("#chatSend");
+    const inp = $("#chatInput");
+    if (sendBtn && inp) {
+      sendBtn.onclick = () => sendChat(session, inp.value || "");
+      inp.onkeydown = (e) => {
+        if (e.key === "Enter") sendBtn.click();
+      };
+    }
+  }
+
+  function sendChat(session, text) {
+    const login = session.login || "user";
+    const msg = (text || "").trim();
+    if (!msg) return;
+
+    if (session.role === "student" && !canAskToday(login)) {
+      const info = $("#chatLimitInfo");
+      if (info) info.textContent = "Limit reached for today. Come back tomorrow.";
       return;
     }
 
-    const items = ex.items || [];
-    let score = 0;
+    // Save user msg
+    const logKey = `log_${login}`;
+    const history = loadJSON(logKey, []);
+    history.push({ role: "user", text: msg });
 
-    // clear old marks
-    document.querySelectorAll(".mark").forEach(m=>m.remove());
+    // Simple local “AI” response (offline). You can replace with real API later.
+    const reply = buildLocalAIReply(msg);
+    history.push({ role: "ai", text: reply });
 
-    if (ex.type === "mc"){
-      document.querySelectorAll("select[data-q]").forEach(sel=>{
-        const i = Number(sel.dataset.q);
-        const ok = Number(sel.value) === items[i].answer;
-        score += ok ? 1 : 0;
+    saveJSON(logKey, history);
 
-        const mark = document.createElement("div");
-        mark.className = "mark " + (ok ? "ok":"bad");
-        mark.textContent = ok ? "✓" : "✕";
-        sel.parentElement.appendChild(mark);
-      });
+    if (session.role === "student") markAskedToday(login);
+
+    // re-render modal only
+    setChatUI(session);
+    const inp = $("#chatInput");
+    if (inp) inp.value = "";
+
+    const info = $("#chatLimitInfo");
+    if (info && session.role === "student") info.textContent = "Limit reached for today. Come back tomorrow.";
+    if ($("#chatSend")) $("#chatSend").disabled = session.role === "student";
+    if ($("#chatInput")) $("#chatInput").disabled = session.role === "student";
+  }
+
+  function buildLocalAIReply(q) {
+    const s = q.toLowerCase();
+    if (s.includes("present simple")) return "Present Simple (RU): привычки/факты. Формула: I/You/We/They + V1; He/She/It + V1+s/es. Отриц: don’t/doesn’t + V1. Вопрос: Do/Does + S + V1?";
+    if (s.includes("present continuous")) return "Present Continuous (RU): действие сейчас/временно. Формула: am/is/are + V-ing. Отриц: am not / isn’t / aren’t + V-ing. Вопрос: Am/Is/Are + S + V-ing?";
+    if (s.includes("past simple")) return "Past Simple (RU): завершённое действие в прошлом. Формула: V2 или V-ed. Отриц: didn’t + V1. Вопрос: Did + S + V1?";
+    if (s.includes("examples")) return "5 examples:\n1) I go to school every day.\n2) She plays tennis on Sundays.\n3) They aren’t watching TV now.\n4) We went to the park yesterday.\n5) Have you ever been to London?";
+    if (s.includes("check")) return "Send your sentence and I’ll check it (grammar + correction).";
+    return "Write your question about grammar (Unit 1–15) and I will explain with a formula and examples.";
+  }
+
+  // ---------- checking (✅/❌ + stars) ----------
+  function submitExercise(session, unit, ex) {
+    if (session.role !== "student") return;
+    const key = `unit_${unit.id}_${ex.id}`;
+    if (hasAttempt(session.login, key)) return;
+
+    const items = (ex.items || []).slice(0, 10);
+    let correct = 0;
+
+    items.forEach((it) => {
+      const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
+      const user = (inp?.value || "").trim();
+      const ok = isAnswerCorrect(user, it.answer);
+
+      const mark = $(`#${CSS.escape(key + "_" + it.id)}_mark`);
+      if (mark) {
+        mark.className = "mark " + (ok ? "ok" : "bad");
+        mark.textContent = ok ? "✓" : "✗";
+      }
+      if (ok) correct++;
+      if (inp) inp.disabled = true;
+    });
+
+    // stars: 1 star per correct answer
+    addStars(session.login, correct);
+    markAttempt(session.login, key);
+
+    // store result for teacher journal
+    saveTeacherResult({
+      type: "exercise",
+      login: session.login,
+      when: new Date().toISOString(),
+      unit: unit.title,
+      ex: ex.title,
+      score: `${correct}/10`,
+      stars: correct,
+    });
+
+    renderApp(session);
+  }
+
+  function submitTest(session, test) {
+    if (session.role !== "student") return;
+    const key = `test_${test.id}`;
+    if (hasAttempt(session.login, key)) return;
+
+    const items = (test.items || []).slice(0, 10);
+    let correct = 0;
+
+    items.forEach((it) => {
+      const inp = $(`.ans[data-aid="${CSS.escape(it.id)}"]`);
+      const user = (inp?.value || "").trim();
+      const ok = isAnswerCorrect(user, it.answer);
+
+      const mark = $(`#${CSS.escape(key + "_" + it.id)}_mark`);
+      if (mark) {
+        mark.className = "mark " + (ok ? "ok" : "bad");
+        mark.textContent = ok ? "✓" : "✗";
+      }
+      if (ok) correct++;
+      if (inp) inp.disabled = true;
+    });
+
+    // stars: 1 star per correct
+    addStars(session.login, correct);
+    markAttempt(session.login, key);
+
+    saveTeacherResult({
+      type: "test",
+      login: session.login,
+      when: new Date().toISOString(),
+      test: test.title,
+      score: `${correct}/10`,
+      stars: correct,
+    });
+
+    renderApp(session);
+  }
+
+  function isAnswerCorrect(user, expected) {
+    // For now: if expected is "ok" accept any non-empty; else compare normalized
+    if (expected === "ok") return user.length > 0;
+
+    const norm = (x) =>
+      String(x || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+
+    return norm(user) === norm(expected);
+  }
+
+  function setAttemptUI(session, unit, ex) {
+    if (session.role !== "student") return;
+    const key = `unit_${unit.id}_${ex.id}`;
+    const attempted = hasAttempt(session.login, key);
+    const info = $("#attemptInfo");
+    const btn = $("#submitBtn");
+    if (attempted) {
+      if (info) info.textContent = "Attempt used (1 try).";
+      if (btn) btn.disabled = true;
+      $$(".ans").forEach((i) => (i.disabled = true));
     } else {
-      document.querySelectorAll("input[data-q]").forEach(inp=>{
-        const i = Number(inp.dataset.q);
-        const user = (inp.value || "").trim().toLowerCase();
-        const ans = String(items[i].answer || "").trim().toLowerCase();
-        const ok = user === ans;
-        score += ok ? 1 : 0;
+      if (info) info.textContent = "1 attempt.";
+      if (btn) btn.disabled = false;
+    }
+  }
 
-        const mark = document.createElement("div");
-        mark.className = "mark " + (ok ? "ok":"bad");
-        mark.textContent = ok ? "✓" : "✕";
-        inp.parentElement.appendChild(mark);
-      });
+  function setAttemptUI_Test(session, test) {
+    if (session.role !== "student") return;
+    const key = `test_${test.id}`;
+    const attempted = hasAttempt(session.login, key);
+    const info = $("#attemptInfoTest");
+    const btn = $("#submitTestBtn");
+    if (attempted) {
+      if (info) info.textContent = "Attempt used (1 try).";
+      if (btn) btn.disabled = true;
+      $$(".ans").forEach((i) => (i.disabled = true));
+    } else {
+      if (info) info.textContent = "1 attempt.";
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ---------- teacher journal ----------
+  function saveTeacherResult(row) {
+    const all = loadJSON(LS.teacher, []);
+    all.push(row);
+    saveJSON(LS.teacher, all);
+  }
+
+  function renderTeacher(session) {
+    const card = $("#teacherCard");
+    if (!card) return;
+
+    const all = loadJSON(LS.teacher, []);
+    if (!all.length) {
+      card.innerHTML = `<div class="muted">No results yet.</div>`;
+      return;
     }
 
-    attempts[k] = { done:true, score, total:items.length, when:new Date().toISOString() };
-    setAttempts(attempts);
-
-    // add stars to unit total
-    const stars = getStars();
-    const uk = keyUnitStars(session, unit.id);
-    stars[uk] = (stars[uk] || 0) + score;
-    setStars(stars);
-
-    state.lastScore = `Your score is ${score}/${items.length} • ⭐ +${score}`;
-    renderApp(session);
-  };
-}
-
-/* =========================
-   TESTS
-========================= */
-function renderTests(){
-  const list = window.APP_DATA.tests || [];
-  return `
-    <div class="breadcrumb">AI BAYAN GRAMMAR 4gr • Tests</div>
-    <h2 class="title">Tests</h2>
-    <div class="card">
-      ${list.map(t=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px dashed rgba(0,0,0,.12);">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="width:14px;height:14px;border-radius:4px;background:${t.color || "#0f7c8a"};display:inline-block;"></span>
-            <div style="font-weight:1100;">${t.title}</div>
-            <div style="color:var(--muted);font-weight:900;">(${t.items.length} items)</div>
-          </div>
-          <button class="btn" data-t="${t.id}">Open</button>
-        </div>
-      `).join("")}
-    </div>
-  `;
-}
-
-function wireTests(session){
-  document.querySelectorAll("button[data-t]").forEach(b=>{
-    b.onclick = () => {
-      state.testId = b.dataset.t;
-      state.view = "testRun";
-      state.lastScore = null;
-      renderApp(session);
-    };
-  });
-}
-
-function renderTestRun(session, test){
-  const attempts = getAttempts();
-  const k = testKey(session, test.id);
-  const locked = attempts[k]?.done === true;
-
-  const body = (test.items || []).map((it, idx)=>`
-    <div class="q">
-      <div class="qnum">${idx+1}.</div>
-      <div class="qtext">${it.text}</div>
-      <select data-ti="${idx}" ${locked?"disabled":""}>
-        ${it.options.map((o,oi)=>`<option value="${oi}">${o}</option>`).join("")}
-      </select>
-    </div>
-  `).join("");
-
-  const saved = attempts[k]?.score;
-  const scoreBar = locked
-    ? `<div style="margin-top:10px;font-weight:900;">Saved score: ${saved}/${test.items.length}</div>`
-    : (state.lastScore ? `<div style="margin-top:10px;font-weight:900;">${state.lastScore}</div>` : "");
-
-  return `
-    <div class="breadcrumb">Tests → ${test.title}</div>
-    <h2 class="title">${test.title}</h2>
-    <div class="card">
-      ${body}
-      ${scoreBar}
-      <div class="footerBtns">
-        <button class="btn" id="testCheck" ${locked?"disabled":""}>Check</button>
-        <button class="btn" id="testBack" style="background:#123c45;">Back</button>
-      </div>
-    </div>
-  `;
-}
-
-function wireTestRun(session, test){
-  $("#testBack").onclick = () => { state.view="tests"; state.lastScore=null; renderApp(session); };
-
-  const btn = $("#testCheck");
-  if (!btn) return;
-
-  btn.onclick = () => {
-    const attempts = getAttempts();
-    const k = testKey(session, test.id);
-    if (attempts[k]?.done) return;
-
-    // clear old marks
-    document.querySelectorAll(".mark").forEach(m=>m.remove());
-
-    let score = 0;
-    document.querySelectorAll("select[data-ti]").forEach(sel=>{
-      const i = Number(sel.dataset.ti);
-      const ok = Number(sel.value) === test.items[i].answer;
-      score += ok ? 1 : 0;
-
-      const mark = document.createElement("div");
-      mark.className = "mark " + (ok ? "ok":"bad");
-      mark.textContent = ok ? "✓" : "✕";
-      sel.parentElement.appendChild(mark);
-    });
-
-    attempts[k] = { done:true, score, total:test.items.length, when:new Date().toISOString() };
-    setAttempts(attempts);
-
-    state.lastScore = `Your score is ${score}/${test.items.length} (locked)`;
-    renderApp(session);
-  };
-}
-
-/* =========================
-   TEACHER JOURNAL (simple)
-========================= */
-function renderJournal(session){
-  const a = window.APP_DATA.auth;
-  const logins = a?.logins || [];
-  const groups = window.APP_DATA.groups || [];
-  const stars = getStars();
-
-  const rows = logins.map(l=>{
-    const fakeSession = { role:"student", login:l };
-    let sum = 0;
-    groups.forEach(g=>{
-      sum += (stars[keyUnitStars(fakeSession, g.id)] || 0);
-    });
-    return `<tr><td>${l}</td><td>⭐ ${sum}</td></tr>`;
-  }).join("");
-
-  return `
-    <div class="breadcrumb">Teacher Journal</div>
-    <h2 class="title">Teacher Journal</h2>
-    <div class="card">
-      <div style="font-weight:900;margin-bottom:10px;">Stars summary</div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
+    const rows = all
+      .slice()
+      .reverse()
+      .slice(0, 200)
+      .map((r) => {
+        const when = new Date(r.when);
+        const w = `${when.toLocaleDateString()} ${when.toLocaleTimeString()}`;
+        const title =
+          r.type === "exercise" ? `${r.unit} — ${r.ex}` : `${r.test}`;
+        return `
           <tr>
-            <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.12);">Login</th>
-            <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.12);">Total Stars</th>
+            <td>${esc(w)}</td>
+            <td>${esc(r.login)}</td>
+            <td>${esc(r.type)}</td>
+            <td>${esc(title)}</td>
+            <td><b>${esc(r.score)}</b></td>
+            <td>⭐ ${esc(r.stars)}</td>
           </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div class="footerBtns">
-        <button class="btn" id="jrBack" style="background:#123c45;">Back</button>
+        `;
+      })
+      .join("");
+
+    card.innerHTML = `
+      <div class="tableWrap">
+        <table class="t">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Login</th>
+              <th>Type</th>
+              <th>Unit/Test</th>
+              <th>Score</th>
+              <th>Stars</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
       </div>
-    </div>
-  `;
-}
-function wireJournal(session){
-  const b = $("#jrBack");
-  if (b) b.onclick = () => { state.view="units"; renderApp(session); };
-}
+      <div class="mutedSmall">Saved in this browser (localStorage).</div>
+    `;
+  }
 
-/* =========================
-   PRINT (A4 + watermark)
-========================= */
-function doPrint(session, unit, ex){
-  const title = `AI BAYAN GRAMMAR 4gr`;
-  const sub = `${unit?.title || ""} • ${ex?.title || ""}`;
-  const wm = `${title}`;
+  // ---------- themes ----------
+  // 15 different base colors (greenish-blue app overall), with 5 shades each
+  function getUnitTheme(i) {
+    const palette = [
+      "#7C4DFF", // u1 purple
+      "#00BFA6",
+      "#1E88E5",
+      "#43A047",
+      "#FB8C00",
+      "#E53935",
+      "#8E24AA",
+      "#00897B",
+      "#3949AB",
+      "#6D4C41",
+      "#F4511E",
+      "#039BE5",
+      "#5E35B1",
+      "#2E7D32",
+      "#C0CA33",
+    ];
+    const base = palette[i % palette.length];
+    const shades = makeShades(base, 5);
+    return { base, shades };
+  }
 
-  const items = ex?.items || [];
-  const list = items.map((it, i)=>`<li style="margin:6px 0;">${i+1}. ${it.text}</li>`).join("");
-
-  const win = window.open("", "_blank");
-  win.document.write(`
-    <html>
-    <head>
-      <meta charset="utf-8" />
-      <title>Print</title>
-      <style>
-        body{font-family:Arial,sans-serif;margin:28px;}
-        h1{font-size:18px;margin:0;}
-        h2{font-size:13px;color:#555;margin:6px 0 18px;}
-        .wm{
-          position:fixed; inset:0;
-          display:flex; align-items:center; justify-content:center;
-          pointer-events:none;
-          font-size:64px; font-weight:900;
-          color:rgba(0,0,0,.06);
-          transform:rotate(-20deg);
-          z-index:0;
-        }
-        .box{position:relative; z-index:1;}
-      </style>
-    </head>
-    <body>
-      <div class="wm">${wm}</div>
-      <div class="box">
-        <h1>${title}</h1>
-        <h2>${sub} • ${session.login} • ${new Date().toLocaleDateString()}</h2>
-        <ol>${list}</ol>
-      </div>
-      <script>window.print();</script>
-    </body>
-    </html>
-  `);
-  win.document.close();
-}
-
-/* =========================
-   AI BAYAN SMS CHAT (1/day)
-========================= */
-function renderAIDock(){
-  // remove old
-  const oldDock = document.querySelector(".aiDock");
-  if (oldDock) oldDock.remove();
-  const oldBtn = document.querySelector(".smsBtn");
-  if (oldBtn) oldBtn.remove();
-
-  const dock = document.createElement("div");
-  dock.className = "aiDock";
-  dock.style.display = "none";
-
-  const welcome = (window.APP_DATA.aiBayan?.welcome || "AI Bayan chat.");
-  const quick = (window.APP_DATA.aiBayan?.quick || []);
-
-  dock.innerHTML = `
-    <div class="aiHead">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span>AI Bayan</span>
-        <span style="opacity:.9;font-size:12px;">1 question/day</span>
-      </div>
-    </div>
-    <div class="aiBody">
-      <div class="aiMsg" id="aiMsg">${welcome}</div>
-      <div class="aiRow">
-        <input id="aiInp" type="text" placeholder="Type your question..." />
-        <button class="btn" id="aiSend">Send</button>
-      </div>
-      <div class="quickRow">
-        ${quick.map(q=>`<button class="quick" data-q="${q}">${q}</button>`).join("")}
-      </div>
-      <div class="aiTiny" id="aiTiny"></div>
-    </div>
-  `;
-  document.body.appendChild(dock);
-
-  const btn = document.createElement("button");
-  btn.className = "smsBtn";
-  btn.textContent = "SMS";
-  document.body.appendChild(btn);
-
-  const setTiny = () => {
-    const ok = canAskAI();
-    $("#aiTiny").textContent = ok
-      ? `You can ask 1 question today (${todayKey()}).`
-      : `Limit reached for today (${todayKey()}). Come back tomorrow.`;
-  };
-  setTiny();
-
-  const answerLocal = (q) => {
-    const t = (q || "").toLowerCase();
-    if (t.includes("present simple") || t.includes("ps")) {
-      return "Present Simple (RU): привычки/факты. he/she/it + s/es. Neg: don’t/doesn’t + V1. Q: Do/Does + S + V1?";
+  function makeShades(hex, n) {
+    // simple shade generator by mixing with white
+    const rgb = hexToRgb(hex);
+    const res = [];
+    for (let i = 0; i < n; i++) {
+      const t = 0.12 + i * 0.12; // mix strength
+      res.push(rgbToHex(mix(rgb, { r: 255, g: 255, b: 255 }, t)));
     }
-    if (t.includes("present continuous") || t.includes("pc")) {
-      return "Present Continuous (RU): действие сейчас. am/is/are + V-ing. Neg: am not/isn’t/aren’t. Q: Am/Is/Are + S + V-ing?";
+    return res;
+  }
+
+  function hexToRgb(hex) {
+    const h = hex.replace("#", "");
+    const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+    const num = parseInt(full, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
     }
-    if (t.includes("past simple")) {
-      return "Past Simple (RU): V2/ed. Neg: didn’t + V1. Q: Did + S + V1? words: yesterday/last/ago.";
-    }
-    if (t.includes("examples")) return "Examples: I study English. She studies every day. They are playing now. I went to school yesterday. There are some apples.";
-    if (t.includes("check")) return "Write your sentence. I will correct it (grammar + better version).";
-    return "I can explain rules (RU), give examples, and check sentences.";
-  };
+  function mix(a, b, t) {
+    return {
+      r: Math.round(a.r * (1 - t) + b.r * t),
+      g: Math.round(a.g * (1 - t) + b.g * t),
+      b: Math.round(a.b * (1 - t) + b.b * t),
+    };
+  }
+  function rgbToHex(c) {
+    const h = (v) => v.toString(16).padStart(2, "0");
+    return `#${h(c.r)}${h(c.g)}${h(c.b)}`;
+  }
 
-  const send = (text) => {
-    const msg = (text || "").trim();
-    if (!msg) return;
-    if (!canAskAI()) { setTiny(); return; }
-    incAI();
-    $("#aiMsg").textContent = answerLocal(msg);
-    $("#aiInp").value = "";
-    setTiny();
-  };
-
-  $("#aiSend").onclick = () => send($("#aiInp").value);
-  dock.querySelectorAll(".quick").forEach(b => b.onclick = () => send(b.dataset.q));
-
-  btn.onclick = () => {
-    dock.style.display = (dock.style.display === "none") ? "block" : "none";
-  };
-}
+  // ---------- init ----------
+  document.addEventListener("DOMContentLoaded", mount);
+})();
