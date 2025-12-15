@@ -1334,5 +1334,5 @@ const TESTS_1_15 = [
   },
 ];
 
-  window.APP_DATA = { units, tests };
+window.APP_DATA = { units, tests: TESTS_1_15 };
 })();
